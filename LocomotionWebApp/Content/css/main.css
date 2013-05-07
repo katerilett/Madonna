@@ -1,0 +1,106 @@
+﻿body
+{
+}
+@media (max-width: 979px)
+{
+	body
+	{
+		padding-top: 0px;
+	}
+}
+
+.span6.padded
+{
+	padding: 5px;
+}
+
+td.right-align
+{
+	text-align: right;
+}
+
+#legend
+{
+	position: fixed;
+	bottom: 0px;
+	left: 0px;
+	z-index: 2;
+}
+#legend .main
+{
+	display: inline-block;
+	background-color: #FFFFFF;
+	padding: 3px;
+	border: 1px solid #000;
+	width: 100px;
+	text-align: center;
+}
+#legend .button-div
+{
+	display: inline-block;
+	border: 1px solid #000;
+	background-color: #e4e4e4;
+	border-radius: 0px 5px 5px 0px;
+	margin-left: -5px;
+	position: relative;
+	top: -3px;
+}
+
+.edit-group>.btn:first-child
+{
+	width: 120px;
+	text-align: left;
+}
+
+.navtop
+{
+	background-color: #e8a800; /* background color will be black for all browsers */
+	background-image: none;
+	background-repeat: no-repeat;
+	filter: none;
+}
+
+.logoimage
+{
+	background-image: url(../img/toplogo.png);
+	width: 199px;
+	height: 37px;
+	top: 1px;
+}
+
+table.dataTable
+{
+	border-spacing: 0px;
+}
+table.dataTable td.right-header
+{
+	text-align: right;
+	padding-right: 15px;
+}
+table.dataTable td.left-header
+{
+	text-align: left;
+	padding-right: 15px;
+}
+table.dataTable td.n-a
+{
+	color: #c4c4c4;
+}
+.clear-graph-btn
+{
+}
+
+.color-box
+{
+	/*border: 1px solid black;*/
+	display: inline-block;
+	width: 18px;
+	height: 11px;
+}
+
+.dataTables_wrapper select,.dataTables_wrapper input
+{
+	width: auto;
+	margin-bottom: 3px;
+	padding: 1px;
+}

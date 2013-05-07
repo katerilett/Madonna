@@ -1,0 +1,123 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Web;
+using DataModel.Class;
+using LocomotionEngines;
+using System.Xml;
+using System.IO;
+using System.Xml.Linq;
+using System.Data.Entity.Validation;
+
+namespace LocomotionWebApp.App_Start
+{
+	public class DatabaseInit
+	{
+		public static void ResetIfDirty()
+		{
+			ResetTestDatabase();
+			//try
+			//{
+			//    using(var ctx = new DataModelContext())
+			//    {
+			//        // Perform a single operation that will likely never change, to trigger the
+			//        // exception if the model has been altered.
+			//        ctx.Users.First(u => true);
+			//    }
+			//}
+			//catch(InvalidOperationException)
+			//{
+			//    ResetTestDatabase();
+			//}
+		}
+
+		private static void ResetTestDatabase()
+		{
+			using(var c = new DataModelContext())
+			{
+				c.Database.Delete();
+
+				// Test user.
+				User testUser = new User()
+					{
+						Username = "test",
+						RealName = "Test Tester",
+
+						// Password: test
+						PasswordHash = new byte[]
+						{210, 27, 81, 207, 29, 175, 188, 214, 4, 70, 79, 250, 27, 18, 154, 97,
+						27, 103, 145, 158, 90, 236, 82, 169, 8, 228, 8, 151, 65, 16, 109, 16},
+
+						PasswordSalt = new byte[]
+						{223, 84, 76, 118, 219, 134, 7, 80, 146, 164, 113, 170, 210, 172, 117, 27},
+
+						AccessGroup = DataModel.Enum.UserAccessGroup.Administrator,
+						LastLogin = DateTime.Now,
+						EmailAddress = "test@example.com",
+					};
+				c.Users.Add(testUser);
+
+<<<<<<< HEAD
+				// Test network
+				var nodes = new List<Node>()
+				{
+					new Node() { ID = 5,
+						Name = "Los Angeles", StationCode = "LAX",
+						Location = new Point() { Latitude = 34.05, Longitude = -118.25 },
+						CarCapacity = 2000,// OutCapacity = 2000,
+						InLinks = new List<Link>(), OutLinks = new List<Link>(),
+						Stochasticity = DataModel.Enum.StochasticType.NonStochastic },
+					new Node() { ID = 7,
+						Name = "Denver", StationCode = "DEN",
+						Location = new Point() { Latitude = 139.7391, Longitude = -104.9847 },
+						CarCapacity = 2000,// OutCapacity = 2000,
+						InLinks = new List<Link>(), OutLinks = new List<Link>(),
+						Stochasticity = DataModel.Enum.StochasticType.NonStochastic }
+				};
+
+				var links = new List<Link>()
+				{
+					new Link() { ID = 1,
+						From = nodes[0], To = nodes[1],
+						maxTrains = 500.0, FuelAdjustment = 0.0, TrackMultiplier = 1174.0, }
+				};
+				nodes[0].OutLinks.Add(links[0]);
+				nodes[1].InLinks.Add(links[0]);
+
+				var testnet1 = new Network()
+				{
+					Nodes = nodes,
+					Links = links,
+					MaxCarsPerTrain = 80,
+					NonFuelCostPerMile = 45.0,
+					FuelCostPerMile = 5.0,
+					CarCostPerMile = 5.0
+				};
+
+=======
+>>>>>>> develop
+				//c.Networks.Add(testnet1);
+				XDocument doc = XDocument.Load(HttpContext.Current.Server.MapPath(@"\App_Data\NewSampleInputs.xml"));				
+				var xmlE = new XmlEngine();
+				var xmlnetwork = xmlE.XmlFileToNetwork(doc);
+				xmlnetwork.Name = "Example file network test";
+				xmlnetwork.Author = testUser;
+				c.Networks.Add(xmlnetwork);
+
+				try
+				{
+					c.SaveChanges();
+				}
+				catch(DbEntityValidationException e)
+				{
+					foreach(var i in e.EntityValidationErrors)
+					{
+						Console.WriteLine(i.ValidationErrors);
+					}
+
+				}
+
+			}
+		}
+	}
+}

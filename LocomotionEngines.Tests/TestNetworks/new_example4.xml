@@ -1,0 +1,28 @@
+﻿<UPInputs>
+	<Network maxCars="80" nonFuelCost="45.00" fuelCost="5.0" carCost="5.0">
+		<Nodes>
+			<Node id="LAX" latitude="34.05" longitude="-118.25" cars="2000"/>
+			<Node id="DEN" latitude="39.739167" longitude="-104.984722" cars="2000"/>
+			<Node id="PHX" latitude="33.45" longitude="-112.066667" cars="2000"/>
+		</Nodes>
+		<Arcs>
+			<Arc start="LAX" end="DEN" trackMultiplier="1.41314956559386" maxTrains="15" fuelAdj="1"/>
+			<Arc start="DEN" end="LAX" trackMultiplier="1.41314956559386" maxTrains="15" fuelAdj="1"/>
+			<Arc start="LAX" end="PHX" trackMultiplier="1.1126870834" maxTrains="15" fuelAdj="1"/>
+			<Arc start="PHX" end="LAX" trackMultiplier="1.1126870834" maxTrains="15" fuelAdj="1"/>
+			<Arc start="DEN" end="PHX" trackMultiplier="1.427660678" maxTrains="15" fuelAdj="1"/>
+			<Arc start="PHX" end="DEN" trackMultiplier="1.427660678" maxTrains="15" fuelAdj="1"/>
+		</Arcs>
+	</Network>
+	<Orders>
+		<!-- SEA orders -->
+		<Order from="LAX" to="DEN" revenue="300.5" cars="595"/>
+		<Order from="LAX" to="PHX" revenue="34.53" cars="405"/>
+
+		<Order from="DEN" to="LAX" revenue="216.41" cars="300"/>
+		<Order from="DEN" to="PHX" revenue="56.44" cars="500"/>
+
+		<Order from="PHX" to="LAX" revenue="112.34" cars="100"/>
+		<Order from="PHX" to="DEN" revenue="300.32" cars="100"/>
+	</Orders>
+</UPInputs>

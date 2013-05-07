@@ -1,0 +1,131 @@
+﻿@model LocomotionWebApp.Models.Account.LoginModel
+@{
+}
+
+@section Title
+{
+	Login
+}
+
+<div class="container">
+
+<div class="row">
+	<div style="text-align: center">
+		<h2>Welcome to the Locomotion Network Solver</h2>
+	</div>
+</div>
+
+<div class="row-fluid">
+	<div class="span6">
+			<h3>Log In</h3>
+			<p>Use your username to sign into an existing account.</p>
+
+			@using (Html.BeginForm("Index", "Account", FormMethod.Post, new { @class = "form-horizontal" }))
+   {
+				<div class="control-group">
+					<label class="control-label" for="inputUsername">Username</label>
+					<div class="controls">
+						@Html.TextBoxFor(m => Model.Username,
+							new { @class="input-medium", id="inputUsername", placeholder = "Username" })
+					</div>
+				</div>
+				<div class="control-group">
+					<label class="control-label" for="inputPassword">Password</label>
+					<div class="controls">					
+						@Html.PasswordFor(m => Model.Password,
+							new { @class="input-medium", id="inputPassword", placeholder = "Password" })
+					</div>
+				</div>
+				<div class="control-group">
+					<div class="controls">
+					<input type="submit" class="btn btn-danger" value="Log In" /> <span class="text-error">&nbsp;@Html.ValidationMessage("result")</span>
+					</div>
+				</div>
+   }
+	</div>
+	<div class="span6">
+
+		<h3>Register Your Account</h3>
+		<p>New User? Create your Locomotion account here!</p>
+
+		@using(Html.BeginForm("Create", "Account", FormMethod.Post, new { @class = "form-horizontal" }))
+		{
+			<div class="control-group">				
+				<label class="control-label" for="inputFirstName">Name</label>
+				<div class="controls">
+					@Html.TextBoxFor(m => Model.NewUser.RealName,
+						new { @class="input-medium", required ="true", placeholder = "Name" })
+					<br />
+					<span class="text-error">@Html.ValidationMessageFor(m => Model.NewUser.RealName)</span>
+				</div>
+			</div>
+
+			<div class="control-group">
+				<label class="control-label" for="inputEmail">Email Address</label>
+				<div class="controls">
+					@Html.TextBoxFor(m => Model.NewUser.EmailAddress,
+						new { @class="input-medium", required ="true", type="email", placeholder = "Email" })
+					<br />
+					<span class="text-error">@Html.ValidationMessageFor(m => Model.NewUser.EmailAddress)</span>
+				</div>
+			</div>
+
+			<div class="control-group">
+				<label class="control-label" for="inputEmail">Permission Code</label>
+				<div class="controls">
+					@Html.TextBoxFor(m => Model.PermissionCode,
+						new { @class="input-medium", required ="true", placeholder = "Permission Code" })
+					<br />
+					<span class="text-error">@Html.ValidationMessageFor(m => Model.PermissionCode)</span>
+				</div>
+			</div>
+	  
+			<div class="control-group">
+				<label class="control-label" for="inputDepartmentType">Department</label>
+				<div class="controls">
+					@Html.DropDownListFor(m => Model.department,
+						new SelectList(Enum.GetValues(typeof(DataModel.Enum.UserAccessGroup))),
+						new { @class="input-medium" })
+					<br />
+					<span class="text-error">@Html.ValidationMessageFor(m => Model.department)</span>
+				</div>
+			</div>
+	  
+			<div class="control-group">
+				<label class="control-label" for="inputUsername">Username</label>
+				<div class="controls">
+					@Html.TextBoxFor(m => Model.NewUser.Username,
+						new { @class="input-medium", required ="true", placeholder = "Username" })
+					<br />
+					<span class="text-error">@Html.ValidationMessageFor(m => Model.NewUser.Username)</span>
+				</div>
+			</div>
+
+			<div class="control-group">
+				<label class="control-label" for="inputPassword">Password</label>
+				<div class="controls">
+					@Html.PasswordFor(m => Model.Password,
+						new { @class="input-medium", required ="true", type="password", placeholder = "Password" })
+					<br />
+					<span class="text-error">@Html.ValidationMessageFor(m => Model.Password)</span>
+				</div>
+			</div>
+
+			<div class="control-group">
+				<div class="controls">
+					@Html.PasswordFor(m => Model.PassConfirm,
+						new { @class="input-medium", required ="true", type="password", placeholder = "Confirm Password" })
+					<br />
+					<span class="text-error">@Html.ValidationMessageFor(m => Model.PassConfirm)</span>
+				</div>
+			</div> 
+			  
+			<div class="control-group">
+				<div class="controls">
+					<button type="submit" class="btn btn-danger">Register</button><span class="text-error">&nbsp;&nbsp;@Html.ValidationMessage("regResult")</span>
+				</div>
+			</div>
+		}
+	</div>
+</div>
+</div>

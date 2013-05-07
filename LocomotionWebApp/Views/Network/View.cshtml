@@ -1,0 +1,2524 @@
+﻿@model LocomotionWebApp.Models.ViewModels.NetworkViewModel
+
+
+@{
+}
+
+@section Title
+{
+	@Html.Raw(Model.Name)
+}
+
+@section Styles
+{
+	<link rel="stylesheet" type="text/css" href="@Url.Content("~/Content/css/map-screen.css")" />
+	 
+}
+
+@section Scripts
+{
+	<script type="text/javascript" src="@Url.Content("~/Content/js/map-sidebar.js")"></script>
+
+
+	<script type="text/javascript"
+		src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAXyyqpX0zMhdBSleKPrkVDVMathVoJHNU&libraries=geometry&sensor=true">
+	</script>
+	<script type="text/javascript">
+		// Store network data as a JS object, for easy confirmation of validity.
+		var networkData = null;
+		var optimizationData = null;
+		var map = null;
+		var nodeCounter = 0;
+		var originLocation;
+		var addingAnother = false;
+
+		var addingNode = false;
+		var addingLink = false;
+		var addingOrder = false;
+		var removingNode = false;
+		var removingLink = false;
+		var removingOrder = false;
+		var viewingOrders = false;
+
+		var nodeTo = "";
+		var nodeFrom = "";
+
+		var ORDERS = "orders";
+		var LINKS = "links";
+		var currentMode = LINKS;
+
+		var linkArray = [];
+		var orderArray = [];
+		var markerArray = [];
+		var arrowArray = [];
+		var contentStringLinkArray = [];
+		var contentStringOrderArray = [];
+
+		var startTab;
+
+		var infoWindow = new google.maps.InfoWindow({
+
+		});
+		
+		function mapLoaded(data) {
+			var mapOptions = {
+				center: new google.maps.LatLng(35.2324, -98.4160),
+				zoom: 5,
+				mapTypeId: google.maps.MapTypeId.TERRAIN
+			};
+			//console.log("loaded map", data);
+			map = new google.maps.Map(document.getElementById("map_canvas"),
+					mapOptions);
+
+
+			google.maps.event.addListener(map, "click", function(event) {
+
+				if (addingNode == true) {
+
+					var lat = event.latLng.lat();
+					var lng = event.latLng.lng();
+
+					var latlng = new google.maps.LatLng(lat, lng)
+
+					var geocoder = new google.maps.Geocoder();
+
+
+					activateForm("clickNodeModal");
+
+					geocoder.geocode({ 'latLng': latlng }, function(results, status) {
+						if (status == google.maps.GeocoderStatus.OK) {
+							var city = "n/a"
+
+							for (var i = 0; i < results[0].address_components.length; i++) {
+
+								if (results[0].address_components[i].types[0] == "locality") {
+
+									city = results[0].address_components[i];
+
+								}
+							}
+							$("#jsModal .City").attr("value", city.short_name);
+						} else {
+							$("#jsModal .City").attr("value", "");
+						}
+					});
+					$("#jsModal .Latitude").attr("value", lat);
+					$("#jsModal .Longitude").attr("value", lng);
+				}
+			});
+			google.maps.event.addListener(map, "tilesloaded", function() {
+				$("#map_canvas").css("position", "fixed");
+			});
+			addNodesLinks();
+		}
+
+		function addNodesLinks() {
+			addNodes(networkData);
+			addLinks(networkData);
+		}
+		function addNodesOrders() {
+			addNodes(networkData);
+			addOrders(networkData);
+		}
+
+		function addNodes(data) {
+			removeMarkers();
+			networkData = data;
+			if (networkData.optimizedNodes != null) {
+				showLegend();
+				showOptimized();
+			} else {
+				showUnoptimized();
+			}
+			var dropString ='';
+			for (var n = 0; n < networkData.nodesArray.length; n++) {
+				dropString = dropString + '<option value="' + networkData.nodesArray[n].stationcode +'">' + networkData.nodesArray[n].stationcode + '</option>';
+
+				if (networkData.optimizedNodes != null) {
+					
+					var percentCapacity = (networkData.optimizedNodes[networkData.nodesArray[n].id].inFlow / networkData.nodesArray[n].carCapacity);
+
+					if (networkData.nodesArray[n].inCapacity == 0) {
+						percentCapacity = 0;
+					}
+					else {
+
+						var round = percentCapacity * 100;
+						round = Math.round(round);
+						round = round / 100;
+						percentCapacity = round;
+					}
+					var contentString =
+
+			'<div style="height:175px">' + '<p>' + networkData.nodesArray[n].name + '</p>' +
+			'<p>Station Code: ' + networkData.nodesArray[n].stationcode + '</p>' +
+			'<p>Latitude: ' + networkData.nodesArray[n].latitude.toFixed(2) + '</p>' +
+			'<p>Longitude: ' + networkData.nodesArray[n].longitude.toFixed(2) + '</p>' +
+			'<p>Capacity: ' + networkData.nodesArray[n].carCapacity + ' cars</p>' +
+			'<p>Percent Capacity: ' + (percentCapacity * 100.0).toFixed(1) + '%' 
+			@Html.Raw((Html.Action("Access", "Account").ToString().Equals("Administrator") == true 
+		|| Html.Action("Access", "Account").ToString().Equals("Operations") == true) ?
+		"+ '<div style=\"float:right\" <button class=\"btn btn-primary\" onclick=\"editNode('+n+')\">Edit</button></div>' + '</p></div>'" : "")
+			;
+
+					var Icon = 'http://chart.apis.google.com/chart?chst=d_map_pin_letter&chld=%E2%80%A2|';
+
+					if (percentCapacity >= 1) {
+						Icon += "ff6029"
+					} else if (percentCapacity <= 0) {
+						Icon += "444444"
+					} else {
+						Icon += colorRGBLerp(0x2f43ff, 0xff0000, percentCapacity);
+					}
+					
+					var marker = new google.maps.Marker({
+						position: new google.maps.LatLng(networkData.nodesArray[n].latitude, networkData.nodesArray[n].longitude),
+						map: map,
+						icon: Icon,
+						title: networkData.nodesArray[n].stationcode,
+						html: contentString,
+						zIndex: n
+					})
+
+				}
+				else {
+					var contentString =
+
+					'<div style="height:150px">' + '<p>' + networkData.nodesArray[n].name + '</p>' +
+					'<p>Station Code: ' + networkData.nodesArray[n].stationcode + '</p>' +
+					'<p>Latitude: ' + networkData.nodesArray[n].latitude.toFixed(2) + '</p>' +
+					'<p>Longitude: ' + networkData.nodesArray[n].longitude.toFixed(2) + '</p>' +
+					'<p>Capacity: ' + networkData.nodesArray[n].carCapacity + ' cars' 
+					@Html.Raw((Html.Action("Access", "Account").ToString().Equals("Administrator") == true 
+		|| Html.Action("Access", "Account").ToString().Equals("Operations") == true) ?
+		"+ '<div style=\"float:right\" <button class=\"btn btn-primary\" onclick=\"editNode('+n+')\">Edit</button></div>' + '</p></div>'" : "")
+						;
+
+
+					var marker = new google.maps.Marker({
+						position: new google.maps.LatLng(networkData.nodesArray[n].latitude, networkData.nodesArray[n].longitude),
+						map: map,
+						title: networkData.nodesArray[n].stationcode,
+						icon: 'http://chart.apis.google.com/chart?chst=d_map_pin_letter&chld=%E2%80%A2|aaaaaa',
+						html: contentString,
+						zIndex: n
+					});
+				}
+				markerArray.push(marker);				
+
+				google.maps.event.addListener(marker, "rightclick", function() {
+
+					infoWindow.setContent(this.html);
+					infoWindow.open(map, this);
+
+				});
+
+				google.maps.event.addListener(marker, "click", function() {
+
+					if (addingLink == true) {
+						if (nodeCounter == 0) {
+
+							nodeFrom = this.title;
+							originLocation = this.position;
+							nodeCounter++;
+							this.setAnimation(google.maps.Animation.BOUNCE);
+						}
+						else {
+							nodeCounter = 0;
+
+							for (var m = 0; m < markerArray.length; m++) {
+								markerArray[m].setAnimation(null);
+							}
+
+							var distance = google.maps.geometry.spherical.computeDistanceBetween(this.position, originLocation) / 1609.34;
+							activateForm("clickLinkModal");
+							$("#jsModal .linkFrom").val(nodeFrom);
+							$("#jsModal .linkTo").val(this.title);
+							$("#jsModal .Distance").val(distance);
+						}
+					}
+				});
+
+				google.maps.event.addListener(marker, "click", function() {
+
+					if (addingOrder == true) {
+						if (nodeCounter == 0) {
+
+							nodeFrom = this.title;
+							nodeCounter++;
+							this.setAnimation(google.maps.Animation.BOUNCE);
+						}
+						else {
+							for (var m = 0; m < markerArray.length; m++) {
+								markerArray[m].setAnimation(null);
+							}
+							nodeCounter = 0;
+							activateForm("clickOrderModal");
+							$("#jsModal .orderFrom").val(nodeFrom);
+							$("#jsModal .orderTo").val(this.title);
+						}
+					}
+				});
+
+				google.maps.event.addListener(marker, "click", function () {
+
+					if (removingLink == true) {
+						if (nodeCounter == 0) {
+
+							nodeFrom = this.title;
+							nodeCounter++;
+							this.setAnimation(google.maps.Animation.BOUNCE);
+						}
+						else {
+							for (var m = 0; m < markerArray.length; m++) {
+								markerArray[m].setAnimation(null);
+							}
+							nodeCounter = 0;
+							activateForm("clickRemoveLinkModal");
+							$("#jsModal .LinkFrom").val(nodeFrom);
+							$("#jsModal .LinkTo").val(this.title);
+						}
+					}
+				});
+
+				google.maps.event.addListener(marker, "click", function () {
+
+					if (removingOrder == true) {
+						if (nodeCounter == 0) {
+
+							nodeFrom = this.title;
+							nodeCounter++;
+							this.setAnimation(google.maps.Animation.BOUNCE);
+						}
+						else {
+							nodeCounter = 0;
+							for (var m = 0; m < markerArray.length; m++) {
+								markerArray[m].setAnimation(null);
+							}
+							activateForm("clickRemoveOrderModal");
+							$("#jsModal .OrderFrom").val(nodeFrom);
+							$("#jsModal .OrderTo").val(this.title);
+						}
+					}
+				});
+				google.maps.event.addListener(marker, "click", function () {
+
+					if (removingNode == true) {
+						activateForm("removeNodeClickModal");
+						$("#jsModal .NodeStationCode").val(this.title);
+						
+						}
+				});
+			}
+			$("#removeNodeModal select").html(dropString);
+			$("#removeNodeClickModal select").html(dropString);
+			$("#addLinkModal select").html(dropString);
+			$("#clickLinkModal select").html(dropString);
+			$("#editLinkModal select").html(dropString);
+			$("#removeLinkModal select").html(dropString);
+			$("#clickRemoveLinkModal select").html(dropString);
+			$("#addOrderModal select").html(dropString);
+			$("#clickOrderModal select").html(dropString);
+			$("#editOrderModal select").html(dropString);
+			$("#removeOrderModal select").html(dropString);
+			$("#clickRemoveOrderModal select").html(dropString);
+		}
+
+		var evenOdd = 0;
+
+		$.fn.extend({
+
+			curvedLine: function(options) {
+
+				var defaults = {
+					LatStart: null,
+					LngStart: null,
+					LatEnd: null,
+					LngEnd: null,
+					Color: "#FF0000",
+					Opacity: 1,
+					Weight: 3,
+					GapWidth: 0,
+					Horizontal: true,
+					Multiplier: 1,
+					Resolution: 0.1,
+					Map: map,
+					LinkNum: 0,
+					ArrowColor: "black"
+				}
+
+				var options = $.extend(defaults, options);
+
+				return this.each(function() {
+
+					var o = options;
+
+					var LastLat = o.LatStart;
+					var LastLng = o.LngStart;
+
+					var PartLat;
+					var PartLng;
+
+					var Points = new Array();
+					var PointsOffset = new Array();
+
+					for (point = 0; point <= 1; point += o.Resolution) {
+						Points.push(point);
+						offset = (0.6 * Math.sin((Math.PI * point / 1)));
+						PointsOffset.push(offset);
+					}
+
+					var OffsetMultiplier = 0;
+
+					if (o.Horizontal == true) {
+
+						var OffsetLenght = (o.LngEnd - o.LngStart) * 0.1;
+
+					} else {
+
+						var OffsetLenght = (o.LatEnd - o.LatStart) * 0.1;
+
+					}
+
+					for (var i = 0; i < Points.length; i++) {
+
+						if (i == 4) {
+
+							OffsetMultiplier = 1.5 * o.Multiplier;
+
+						}
+
+						if (i >= 5) {
+
+							OffsetMultiplier = (OffsetLenght * PointsOffset[i]) * o.Multiplier;
+
+						} else {
+
+							OffsetMultiplier = (OffsetLenght * PointsOffset[i]) * o.Multiplier;
+
+						}
+
+						if (o.Horizontal == true) {
+
+							PartLat = (o.LatStart + ((o.LatEnd - o.LatStart) * Points[i])) + OffsetMultiplier;
+							PartLng = (o.LngStart + ((o.LngEnd - o.LngStart) * Points[i]));
+
+						} else {
+
+							PartLat = (o.LatStart + ((o.LatEnd - o.LatStart) * Points[i]));
+							PartLng = (o.LngStart + ((o.LngEnd - o.LngStart) * Points[i])) + OffsetMultiplier;
+
+						}
+
+						if (i == 10) {
+							curvedLineCreateArrowSegment(LastLat, LastLng, PartLat, PartLng, o.Color, o.Opacity, o.Weight, o.GapWidth, o.Map, o.LinkNum, o.ArrowColor);
+						}
+						else {
+							curvedLineCreateSegment(LastLat, LastLng, PartLat, PartLng, o.Color, o.Opacity, o.Weight, o.GapWidth, o.Map, o.LinkNum);
+						}
+
+						LastLat = PartLat;
+						LastLng = PartLng;
+
+					}
+
+					curvedLineCreateSegment(LastLat, LastLng, o.LatEnd, o.LngEnd, o.Color, o.Opacity, o.Weight, o.GapWidth, o.Map, o.LinkNum);
+
+				});
+
+			}
+
+		});
+
+		function curvedLineCreateSegment(LatStart, LngStart, LatEnd, LngEnd, Color, Opacity, Weight, GapWidth, Map, LinkNum) {
+
+			evenOdd++;
+
+			if (evenOdd % (GapWidth + 1))
+				return;
+
+			var LineCordinates = new Array();
+
+			LineCordinates[0] = new google.maps.LatLng(LatStart, LngStart);
+			LineCordinates[1] = new google.maps.LatLng(LatEnd, LngEnd);
+
+			var Line = new google.maps.Polyline({
+				path: LineCordinates,
+				geodesic: false,
+				strokeColor: Color,
+				strokeOpacity: Opacity,
+				strokeWeight: Weight,
+				zIndex: LinkNum
+			});
+			linkArray.push(Line);
+			Line.setMap(Map);
+
+			google.maps.event.addListener(Line, "rightclick", function(event) {
+
+				infoWindow.setContent(contentStringLinkArray[this.zIndex]);
+				infoWindow.setPosition(event.latLng);
+				infoWindow.open(map);
+
+			});
+		}
+
+		function curvedLineCreateArrowSegment(LatStart, LngStart, LatEnd, LngEnd, Color, Opacity, Weight, GapWidth, Map, LinkNum, ArrowColor) {
+
+			var directionArrow = {
+				path: google.maps.SymbolPath.FORWARD_CLOSED_ARROW,
+				scale: 3,
+				fillColor: ArrowColor,
+				fillOpacity: 1,
+				strokeColor: ArrowColor,
+
+			}
+
+			evenOdd++;
+
+			if (evenOdd % (GapWidth + 1))
+				return;
+
+			var LineCordinates = new Array();
+
+			LineCordinates[0] = new google.maps.LatLng(LatStart, LngStart);
+			LineCordinates[1] = new google.maps.LatLng(LatEnd, LngEnd);
+
+			var Line = new google.maps.Polyline({
+				path: LineCordinates,
+				geodesic: false,
+				strokeColor: Color,
+				icons: [{
+					icon: directionArrow,
+					offset: '100%'
+				}],
+
+				strokeOpacity: Opacity,
+				strokeWeight: Weight,
+				zIndex: LinkNum
+			});
+			linkArray.push(Line);
+			Line.setMap(Map);
+
+			google.maps.event.addListener(Line, "rightclick", function(event) {
+
+				infoWindow.setContent(contentStringLinkArray[this.zIndex]);
+				infoWindow.setPosition(event.latLng);
+				infoWindow.open(map);
+
+			});
+		}
+
+		
+		function addLinks(data) {
+			removeOrders();
+			networkData = data;
+			
+			currentMode = LINKS;
+			viewModeMatch();
+
+			var opNum = 28;
+			for (var l = 0; l < networkData.links.length; l++) {
+				opNum++;
+
+				var horizontal = true;
+
+				var latStart = networkData.nodes[networkData.links[l].fromid].latitude;
+				var lngStart = networkData.nodes[networkData.links[l].fromid].longitude;
+
+				var latEnd = networkData.nodes[networkData.links[l].toid].latitude;
+				var lngEnd = networkData.nodes[networkData.links[l].toid].longitude;
+
+				
+
+				var color = "black";
+
+				if (Math.abs(latStart - latEnd) > Math.abs((-1 * lngStart) - (-1 * lngEnd))) {
+					horizontal = false;
+				}
+
+				if (networkData.optimizedLinks != null) {
+
+					var contentString =
+
+					'<div style="height:200px">' +
+					'<p>To Station Code: ' + networkData.nodes[networkData.links[l].toid].stationcode + '</p>' +
+					'<p>From Station Code: ' + networkData.nodes[networkData.links[l].fromid].stationcode + '</p>' +
+					'<p>Distance: ' + networkData.links[l].distance.toFixed(2) + '</p>' +
+					'<p>Max Trains: ' + networkData.links[l].maxTrains + '</p>' +
+					'<p>Fuel Adjustment: ' + networkData.links[l].fuelAdjustment + '</p>' +
+					'<p>Train Subscription: ' +
+						(networkData.optimizedLinks[networkData.links[l].id].supscription * 100.0).toFixed(1)+"%"
+					@Html.Raw((Html.Action("Access", "Account").ToString().Equals("Administrator") == true 
+		|| Html.Action("Access", "Account").ToString().Equals("Operations") == true) ?
+		"+ '<div style=\"float:right\" <button class=\"btn btn-primary\" onclick=\"editLink('+l+')\">Edit</button></div>' + '</p></div>'" : "");
+					
+
+					contentStringLinkArray.push(contentString);
+
+					var supscription = networkData.optimizedLinks[networkData.links[l].id].supscription;
+
+					if (supscription >= 1) {
+						color = "#ff6029";
+					} else if (supscription <= 0) {
+						color = "#000000";
+					} else {
+						color = "#" + colorRGBLerp(0x2f43ff, 0xff0000, supscription);
+					}
+				} else {
+					var contentString =
+
+					'<div style="height:175px">' +
+					'<p>To Station Code: ' + networkData.nodes[networkData.links[l].toid].stationcode + '</p>' +
+					'<p>From Station Code: ' + networkData.nodes[networkData.links[l].fromid].stationcode + '</p>' +
+					'<p>Distance: ' + networkData.links[l].distance + '</p>' +
+					'<p>Max Trains: ' + networkData.links[l].maxTrains + '</p>' +
+					'<p>Fuel Adjustment: ' + networkData.links[l].fuelAdjustment
+					@Html.Raw((Html.Action("Access", "Account").ToString().Equals("Administrator") == true 
+		|| Html.Action("Access", "Account").ToString().Equals("Operations") == true) ?
+		"+ '<div style=\"float:right\" <button class=\"btn btn-primary\" onclick=\"editLink('+l+')\">Edit</button></div>' + '</p></div>'" : "");
+
+					contentStringLinkArray.push(contentString);
+				}
+				$("#map_canvas").curvedLine({
+					LatStart: latStart,
+					LngStart: lngStart,
+					LatEnd: latEnd,
+					LngEnd: lngEnd,
+					Resolution: .05,
+					Color: color,
+					ArrowColor: color,
+					Horizontal: horizontal,
+					LinkNum: l,
+					Weight: 4
+				});
+			}
+		}
+
+
+
+				
+		function addOrders(data) {
+			removeLinks();
+			networkData = data;
+			
+			currentMode = ORDERS;
+			viewModeMatch();
+
+			for (var l = 0; l < networkData.orders.length; l++) {
+				var horizontal = true;
+
+				var latStart = networkData.nodes[networkData.orders[l].fromid].latitude;
+				var lngStart = networkData.nodes[networkData.orders[l].fromid].longitude;
+
+				var latEnd = networkData.nodes[networkData.orders[l].toid].latitude;
+				var lngEnd = networkData.nodes[networkData.orders[l].toid].longitude;
+
+
+				var contentString =
+
+				'<div style="height:125px">' + 
+				'<p>To Station Code: ' + networkData.nodes[networkData.orders[l].toid].stationcode + '</p>' +
+				'<p>From Station Code: ' + networkData.nodes[networkData.orders[l].fromid].stationcode + '</p>' +
+				'<p>Cars: ' + networkData.orders[l].cars + '</p>' +
+				'<p>Revenue: ' + networkData.orders[l].revenue
+				@Html.Raw((Html.Action("Access", "Account").ToString().Equals("Administrator") == true 
+		|| Html.Action("Access", "Account").ToString().Equals("Operations") == true) ?
+		"+ '<div style=\"float:right\" <button class=\"btn btn-primary\" onclick=\"editOrder('+l+')\">Edit</button></div>' + '</p></div>'" : "");
+
+				contentStringLinkArray.push(contentString);
+
+				if (Math.abs(latStart - latEnd) > Math.abs((-1 * lngStart) - (-1 * lngEnd))) {
+					horizontal = false;
+				}
+				$("#map_canvas").curvedLine({
+					LatStart: latStart,
+					LngStart: lngStart,
+					LatEnd: latEnd,
+					LngEnd: lngEnd,
+					Resolution: .05,
+					Color: "black",
+					Horizontal: horizontal,
+					LinkNum: l,
+					Weight: 4
+				});
+			}
+		}
+
+		function removeMarkers() {
+			if (markerArray) {
+				for (i in markerArray) {
+					markerArray[i].setMap(null);
+				}
+				markerArray.length = 0;
+			}
+		}
+
+		function removeLinks() {
+			if (linkArray) {
+				for (i in linkArray) {
+					linkArray[i].setMap(null);
+				}
+				linkArray.length = 0;
+				contentStringLinkArray.length = 0;
+			}
+		}
+
+		function removeOrders() {
+			if (linkArray) {
+				for (i in linkArray) {
+					linkArray[i].setMap(null);
+				}
+				linkArray.length = 0;
+				contentStringLinkArray.length = 0;
+			}
+		}
+
+		function optimizationLoaded(data, tStatus, jqHXR) {
+			optimizationData = data;
+			//console.log(data);
+			if(optimizationData.failure == true)
+				optimizationData = null;
+
+			if(optimizationData == null) {
+				// Show divs that apply to an unoptimized network.
+				$(".show-optimized").hide();
+				$(".show-unoptimized").show();
+				showUnoptimized();
+			} else {
+				// Show divs that apply to an optimized network.
+				$(".show-optimized").show();
+				$(".show-unoptimized").hide();
+
+				$("#optimize-sidebar-content").load(
+					"@Url.Action("OptimizationSidebar", new { id=Model.ID })?startTab="+startTab
+				);
+				loadNetwork();
+				
+				showOptimized();
+				
+			}
+		}
+
+		
+
+		function loadNetwork() {
+			$.post("@Url.Action("GetNetwork", new { id=Model.ID})", function(data, tStatus, jqHXR) {
+
+				networkData = data;
+				//console.log("Loaded", data);
+				
+				if(map == null)
+					mapLoaded();
+				else {
+					if (viewingOrders) {
+						addNodesOrders();
+					} else {
+						addNodesLinks();
+					}
+				}
+			}, "json");
+		}
+
+		function loadOrderNetwork() {
+			$.getJSON("@Url.Action("GetNetwork", new { id=Model.ID})",
+					addOrders);
+		}
+
+		function loadLinkNetwork() {
+			$.getJSON("@Url.Action("GetNetwork", new { id=Model.ID})",
+					addLinks);
+		}
+		function viewModeMatch() {
+			if(currentMode == LINKS) {
+				$("#show-links-btn").addClass("active");
+				$("#show-orders-btn").removeClass("active");
+			}
+			if(currentMode == ORDERS) {
+				$("#show-orders-btn").addClass("active");
+				$("#show-links-btn").removeClass("active");
+			}
+		}
+
+		function loadNodeNetwork() {
+			$.getJSON("@Url.Action("GetNetwork", new { id=Model.ID})",
+					addNodes);
+		}
+
+		function loadUnoptimizedNodeNetwork() {
+			$.getJSON("@Url.Action("GetNetwork", new { id=Model.ID})",
+					addUnoptimizedNodes);
+		}
+
+		function loadOptimization(createOptimization) {
+			if(createOptimization) {
+				hideOutOfDate();
+				showOptimized();
+			}
+
+			//console.log("HI");
+			$("#optimize-sidebar-content")
+				.html('<div style="text-align: center;"><img src="/Content/img/ajax-loader.gif" /></div>');
+			$.post("@Url.Action("GetOptimization")",
+				{
+					id: "@Html.Raw(Model.ID)",
+					createOptimization: createOptimization,
+				},
+				optimizationLoaded, 
+				"json");			
+		}
+
+		$(document).ajaxError(function(e, jqXHR, ajaxSettings, thrownError) {
+			console.log(e, ajaxSettings, jqXHR, thrownError)
+		});
+
+		$(function() {
+			loadNetwork();
+			loadOptimization();
+
+			// Optimization sidebar buttons.
+			$("#sidebar-optimize-btn").click(function() {
+				$("#optimize-sidebar-content")
+					.html('<div style="text-align: center;"><img src="/Content/img/ajax-loader.gif" /></div>');
+				$(".show-optimized").show();
+				$(".show-unoptimized").hide();
+				loadOptimization(true);
+				$("#sidebar-optimize-btn").addClass("disabled");
+			});
+
+		});
+
+		function openTab() {
+			var tab;
+
+			var searchString = window.location.search.substring(1),
+				i, val, params = searchString.split("&");
+
+			for (i = 0; i < params.length; i++) {
+				val = params[i].split("=");
+				if (val[0] == "tab") {
+					tab = val[1];
+				}
+			}
+
+			if (tab == "1") {
+				openEditBar();
+			}
+			else if (tab == "2") {
+				openReport();
+			}
+		};
+	</script>
+
+	<script type="text/javascript">
+
+		function editNode(index) {
+			activateForm("editNodeModal");
+			$("#jsModal .nodeStationCode").val(networkData.nodesArray[index].stationcode);
+			$("#jsModal .nodeCity").val(networkData.nodesArray[index].name);
+			$("#jsModal .nodeLatitude").val(networkData.nodesArray[index].latitude);
+			$("#jsModal .nodeLongitude").val(networkData.nodesArray[index].longitude);
+			$("#jsModal .carCapacity").val(networkData.nodesArray[index].carCapacity);
+			
+		}
+
+		function editLink(index) {
+			activateForm("editLinkModal");
+			$("#jsModal .LinkMaxTrains").val(networkData.links[index].maxTrains);
+			$("#jsModal .LinkDistance").val(networkData.links[index].distance);
+			$("#jsModal .Fuel").val(networkData.links[index].fuelAdjustment);
+			$("#jsModal .LinkFromID").val(networkData.nodes[networkData.links[index].fromid].stationcode);
+			$("#jsModal .LinkToID").val(networkData.nodes[networkData.links[index].toid].stationcode);
+			$("#jsModal .LinkID").val(networkData.links[index].id);
+		}
+
+		function editOrder(index) {
+			activateForm("editOrderModal");
+			$("#jsModal .OrderCars").val(networkData.orders[index].cars);
+			$("#jsModal .OrderRevenue").val(networkData.orders[index].revenue);
+			$("#jsModal .OrderFromID").val(networkData.nodes[networkData.orders[index].fromid].stationcode);
+			$("#jsModal .OrderToID").val(networkData.nodes[networkData.orders[index].toid].stationcode);
+			$("#jsModal .OrderID").val(networkData.orders[index].id);
+
+		}
+		function editNetwork() {
+			activateForm("editNetworkModal");
+			$("#jsModal .MaxCarsPerTrain").val(networkData.MaxCarsPerTrain);
+			$("#jsModal .CarCostPerMile").val(networkData.CarCostPerMile);
+			$("#jsModal .FuelCostPerMile").val(networkData.FuelCostPerMile);
+			$("#jsModal .NonFuelCostPerMile").val(networkData.NonFuelCostPerMile);
+
+		}
+
+		function addAnotherNode() {
+			addingAnother = true;
+			
+			if (addingNode) {
+				addingAnother = false;
+				$("#jsModalForm").submit();
+				addingNode = false;
+				$("#click-Add-Node-btn").button('toggle');
+			}
+			else {
+				$("#jsModalForm").submit();
+				activateForm("addNodeModal");
+			}
+		}
+
+		function removeAnotherNode() {
+			addingAnother = true;
+			if (removingNode) {
+				addingAnother = false;
+				removingNode = false;
+				$("#jsModalForm").submit();
+				$("#click-Remove-Node-btn").button('toggle');
+			}
+			else {
+				$("#jsModalForm").submit();
+				activateForm("removeNodeModal");
+			}
+		}
+
+		function addAnotherLink() {
+			addingAnother = true;
+			
+			if (addingLink) {
+				addingLink = false;
+				addingAnother = false;
+				$("#jsModalForm").submit();
+				$("#click-Add-Link-btn").button('toggle');
+			}
+			else {
+				$("#jsModalForm").submit();
+				activateForm("addLinkModal");
+			}
+		}
+
+		function removeAnotherLink() {
+			addingAnother = true;	
+			if (removingLink) {
+				addingAnother = false;
+				$("#jsModalForm").submit();
+				removingLink = false;
+				$("#click-Remove-Link-btn").button('toggle');
+			}
+			else {
+				$("#jsModalForm").submit();
+				activateForm("removeLinkModal");
+			}
+		}
+
+		function addAnotherOrder() {
+			addingAnother = true;
+			
+			if (addingOrder) {
+				addingOrder = false;
+				addingAnother = false;
+				$("#jsModalForm").submit();
+				$("#click-Add-Order-btn").button('toggle');
+			}
+			else {
+				$("#jsModalForm").submit();
+				activateForm("addOrderModal");
+			}
+		}
+
+		function removeAnotherOrder() {
+			addingAnother = true;
+			if (removingOrder) {
+				addingAnother = false;
+				$("#jsModalForm").submit();
+				removingOrder = false;
+				$("#click-Remove-Order-btn").button('toggle');
+			}
+			else {
+				$("#jsModalForm").submit();
+				activateForm("removeOrderModal");
+			}
+		}
+
+	
+		
+		function openEditBar() {
+			if(!$("#edit-sidebar-btn").hasClass("active")) {
+				showOnSidebar("edit-sidebar", 280);
+				$("#edit-sidebar-btn").addClass("active");
+			} else {
+				hideSidebar();
+			}
+		}
+		function openOptimizationBar() {
+			if(!$("#optimize-sidebar-btn").hasClass("active")) {
+				showOnSidebar("optimize-sidebar", 410);
+				$("#optimize-sidebar-btn").addClass("active");
+			} else {
+				hideSidebar();
+			}
+		}
+		function openReport() {
+			if(!$("#to-report-btn").hasClass("active")) {
+				$("#report-pullover .modal-body")
+					.html('<div style="text-align: center;"><img src="/Content/img/ajax-loader.gif" /></div>');
+				$("#report-pullover .modal-body")
+					.load("@Url.Action("View", "Report", new { id=Model.ID })");
+				hideSidebar();
+				showPullover();
+				$("#to-report-btn").addClass("active");
+			} else {
+				hidePullover();
+				$("#header .sidebar-group .btn").removeClass("active");
+			}
+		}
+
+		$(function() {
+			$("#edit-sidebar-btn").click(openEditBar);
+			$("#optimize-sidebar-btn").click(openOptimizationBar);
+			$("#to-report-btn").click(openReport);
+
+			$("#links-tab-btn").click(function () {
+				loadLinkNetwork();
+			});
+
+			$("#orders-tab-btn").click(function () {
+				loadOrderNetwork();
+			});
+
+			$("#show-links-btn").click(function () {
+				loadLinkNetwork();
+				return false;
+			});
+			$("#show-orders-btn").click(function () {
+				loadOrderNetwork();
+				return false;
+			});
+
+			$("#click-Add-Node-btn").click(function () {
+				if (addingNode == false) {
+					addingNode = true;
+					if (removingLink) {
+						removingLink = false;
+						$("#click-Remove-Link-btn").button('toggle');
+					}
+					if (addingOrder) {
+						addingOrder = false;
+						$("#click-Add-Order-btn").button('toggle');
+					}
+				
+					if (removingNode) {
+						removingNode = false;
+						$("#click-Remove-Node-btn").button('toggle');
+					}
+					if (addingLink) {
+						addingLink = false;
+						$("#click-Add-Link-btn").button('toggle');
+					}
+					if (removingOrder) {
+						removingOrder = false;
+						$("#click-Remove-Order-btn").button('toggle');
+					}
+				}
+				else {
+					addingNode = false;
+				}
+			});
+
+			$("#click-Remove-Node-btn").click(function () {
+				if (removingNode == false) {
+					removingNode = true;
+					if (removingLink) {
+						removingLink = false;
+						$("#click-Remove-Link-btn").button('toggle');
+					}
+					if (addingOrder) {
+						addingOrder = false;
+						$("#click-Add-Order-btn").button('toggle');
+					}
+					if (addingNode) {
+						addingNode = false;
+						$("#click-Add-Node-btn").button('toggle');
+					}
+					
+					if (addingLink) {
+						addingLink = false;
+						$("#click-Add-Link-btn").button('toggle');
+					}
+					if (removingOrder) {
+						removingOrder = false;
+						$("#click-Remove-Order-btn").button('toggle');
+					}
+				}
+				else {
+					removingNode = false;
+				}
+			});
+
+			$("#click-Add-Link-btn").click(function () {
+				if(currentMode != LINKS)
+					loadLinkNetwork();
+				if (addingLink == false) {
+					addingLink = true;
+					if (removingLink) {
+						removingLink = false;
+						$("#click-Remove-Link-btn").button('toggle');
+					}
+					if (addingOrder) {
+						addingOrder = false;
+						$("#click-Add-Order-btn").button('toggle');
+					}
+					if (addingNode) {
+						addingNode = false;
+						$("#click-Add-Node-btn").button('toggle');
+					}
+					if (removingNode) {
+						removingNode = false;
+						$("#click-Remove-Node-btn").button('toggle');
+					}
+			
+					if (removingOrder) {
+						removingOrder = false;
+						$("#click-Remove-Order-btn").button('toggle');
+					}
+					
+				}
+				else {
+					addingLink = false;
+				}
+			});
+
+			$("#click-Remove-Link-btn").click(function () {
+				if(currentMode != LINKS)
+					loadLinkNetwork();
+				if (removingLink == false) {
+					removingLink = true;
+					if (addingOrder) {
+						addingOrder = false;
+						$("#click-Add-Order-btn").button('toggle');
+					}
+					if (addingNode) {
+						addingNode = false;
+						$("#click-Add-Node-btn").button('toggle');
+					}
+					if (removingNode) {
+						removingNode = false;
+						$("#click-Remove-Node-btn").button('toggle');
+					}
+					if (addingLink) {
+						addingLink = false;
+						$("#click-Add-Link-btn").button('toggle');
+					}
+					if (removingOrder) {
+						removingOrder = false;
+						$("#click-Remove-Order-btn").button('toggle');
+					}
+
+				}
+				else {
+					removingLink = false;
+				}
+			});
+
+			$("#click-Add-Order-btn").click(function () {
+				if(currentMode != ORDERS)
+					loadOrderNetwork();
+				if (addingOrder == false) {
+					addingOrder = true;
+					if (removingOrder) {
+						removingOrder = false;
+						$("#click-Remove-Order-btn").button('toggle');
+					}
+					if (addingNode) {
+						addingNode = false;
+						$("#click-Add-Node-btn").button('toggle');
+					}
+					if (removingNode) {
+						removingNode = false;
+						$("#click-Remove-Node-btn").button('toggle');
+					}
+					if (addingLink) {
+						addingLink = false;
+						$("#click-Add-Link-btn").button('toggle');
+					}
+					if (removingLink) {
+						removingLink = false;
+						$("#click-Remove-Link-btn").button('toggle');
+					}
+				}
+				else {
+					addingOrder = false;
+				}
+			});
+
+			$("#click-Remove-Order-btn").click(function () {
+				if(currentMode != ORDERS)
+					loadOrderNetwork();
+				if (removingOrder == false) {
+					removingOrder = true;
+					if (addingOrder) {
+						addingOrder = false;
+						$("#click-Add-Order-btn").button('toggle');
+					}
+					if (addingNode) {
+						addingNode = false;
+						$("#click-Add-Node-btn").button('toggle');
+					}
+					if (removingNode) {
+						removingNode = false;
+						$("#click-Remove-Node-btn").button('toggle');
+					}
+					if (addingLink) {
+						addingLink = false;
+						$("#click-Add-Link-btn").button('toggle');
+					}
+					if (removingLink) {
+						removingLink = false;
+						$("#click-Remove-Link-btn").button('toggle');
+					}
+
+				}
+				else {
+					removingOrder = false;
+				}
+			});
+
+			$(".netview-modal-btn").click(function (e) {
+				var target = $(e.target).attr("data-name");
+				if($(e.target).hasClass("set-links") && currentMode != LINKS)
+					loadLinkNetwork();
+				if($(e.target).hasClass("set-orders") && currentMode != ORDERS)
+					loadOrderNetwork();
+				activateForm(target);
+				return false;
+			});
+
+			$("#links-tab-btn").click(function () {
+				viewingOrders = false;
+			});
+
+			$("#orders-tab-btn").click(function () {
+				viewingOrders = true;
+			});
+			
+			resizePullover();
+			openTab();
+		});
+
+		function activateForm(target) {
+			var title = $("#"+target+" .modal-header h3").html();
+			var body = $("#"+target+" .modal-body").html();
+			var buttons = $("#"+target+" .modal-footer").html();
+
+			var formobj = $("#"+target).closest("form");
+			var action = formobj.attr("action");
+
+			var passByAjax = $("#"+target+" .modal-footer").attr("data-ajax");
+			if(passByAjax == undefined)
+				passByAjax = true;
+
+			$("#jsModal .CheckBox").val(true);
+
+			popupModalFullHtml(title, body, buttons);
+
+			$("#jsModalForm").attr("action", action);
+
+			$("#jsModalForm").unbind("submit");
+			if(passByAjax == true) {
+				$("#jsModalForm").submit(function (e) {
+
+					e.preventDefault();
+					var formdata = $("#jsModalForm").serializeArray();
+
+					$.post(action,
+						formdata,
+						function(data, status, jqXHR) {
+							if (data.success) {
+								infoWindow.close();
+								loadNetwork();
+								loadOptimization();
+								if (addingAnother) {
+								} else {
+									$("#jsModal").modal("hide");
+								}
+								addingAnother = false;
+							}
+						}
+					);
+				});
+			}
+		}
+
+		function resizePullover() {
+			var headerHeight = $("#header").outerHeight();
+			var winHeight = $(window).height() - headerHeight;
+			$("#report-pullover").css("top", headerHeight);
+			$("#report-pullover").css("height", winHeight);
+		}
+		function showPullover() {
+			$("#report-pullover").slideDown();
+		}
+		function hidePullover() {
+			$("#report-pullover").slideUp();
+			$("#to-report-btn").removeClass("active");
+		
+		}
+		$(window).resize(resizePullover);
+
+		function showOutOfDate() {
+			$("#outOfDateBadge").show();
+		}
+		function hideOutOfDate() {
+			$("#outOfDateBadge").hide();
+		}
+
+		function showUnoptimized() {
+			$("#sidebar-reoptimize-btn").removeClass("disabled");
+			$("#sidebar-optimize-btn").removeClass("disabled");
+
+			$("#unoptimizedBadge").show();
+		}
+		function showOptimized() {
+			$("#unoptimizedBadge").hide();
+		}
+
+	</script>
+	<script type="text/javascript">
+		function colorRGBLerp(a, b, t) {
+			var ar = a >> 16;
+			var ag = (a >> 8) & 0xFF;
+			var ab = a & 0xFF;
+
+			var br = b >> 16;
+			var bg = (b >> 8) & 0xFF;
+			var bb = b & 0xFF;
+
+			var cr = ar * (1 - t) + br * t;
+			var cg = ag * (1 - t) + bg * t;
+			var cb = ab * (1 - t) + bb * t;
+			var c = (cr << 16) | (cg << 8) | cb;
+
+			return c.toString(16);
+		}
+
+		function showLegend(e) {
+			$("#legend .open-btn").hide();
+			$("#legend .close-btn").show();
+			$("#legend").animate({
+				"left": "0px"
+			});
+			return false;
+		}
+		function hideLegend(e) {
+			$("#legend .close-btn").hide();
+			$("#legend .open-btn").show();
+			$("#legend").animate({
+				"left": "-108px"
+			});
+			return false;
+		}
+		$(function() {
+			$("#legend .close-btn").click(hideLegend);
+			$("#legend .open-btn").click(showLegend);
+		});
+	</script>
+}
+
+@section NextToLogo
+{
+	<p class="nav navbar-text" style="color: #000;">
+		<em>@Html.Raw(Model.Name)</em>
+		@if(Model.Revision != 0)
+		{
+			<td><a href="#" onclick="popupModalUrl(
+				'@Html.Raw(Model.Name) History',
+				'@Url.Action("NetworkHistory", "Network", new { id = Model.ID })' )" class="">
+				(@Html.DisplayFor(net => Model.Revision) Previous Versions)
+			</a></td>
+		}
+		else
+		{ 
+			<td> @Html.DisplayFor(net => Model.Revision) Previous Versions </td>
+		}
+	</p>
+}
+
+@section Header
+{
+	<div class="btn-group sidebar-group">
+	@if (Html.Action("Access", "Account").ToString().Equals("Administrator") == true || Html.Action("Access", "Account").ToString().Equals("Operations") == true) 
+	{
+		<a href="#" id="edit-sidebar-btn" class="btn">Edit</a>
+	}
+	<a href="#" id="optimize-sidebar-btn" class="btn">
+		Optimize
+		@if(Model.OutOfDate)
+		{ 
+			<span id="outOfDateBadge" class="label label-important">Out of Date</span>
+		}
+		else
+		{ 
+			<span id="outOfDateBadge" style="display:none;" class="label label-important">Out of Date</span>
+		}
+		<span id="unoptimizedBadge"
+			style="@Html.Raw(Model.Optimized ? "display: none;" : "")"
+			class="label">Not Optimized</span>
+	</a>
+	<a href="#" id="to-report-btn" class="btn">Report</a>
+	</div>
+	<i class="icon-search icon-white" style="margin-left: 12px; margin-top: 5px;"></i>
+	<div class="btn-group">
+		<a href="#" class="btn" id="show-links-btn">Links</a>
+		<a href="#" class="btn" id="show-orders-btn">Orders</a>
+	</div>
+
+	<div class="pull-right">
+		<a href="@Url.Action("SaveNetwork", "Network", new { ID = Model.ID })"
+			class="btn btn-primary">Save</a>
+		<a href="#" class="btn netview-modal-btn"
+			data-name="saveModal">Save As...</a>
+	</div>
+}
+
+
+<div id="sidebararea">
+	<div id="sidebararea-int">
+		<div id="sidebar-contents">
+			<div id="edit-sidebar">
+				<h3>Node Tools</h3>
+
+				<div class="btn-group edit-group">
+					<a href="#" class="btn netview-modal-btn"
+						data-name="addNodeModal">Add Node</a>
+					<a href="#" id="click-Add-Node-btn" role="button" class="btn btn-primary"
+						data-toggle ="button"><i class="icon-map-marker icon-white"></i></a>
+				</div>
+				<br /> <br />
+				
+				<div class="btn-group edit-group">
+					<a href="#" class="btn netview-modal-btn"
+						data-name="removeNodeModal">Remove Node</a>	
+					<a href="#" id="click-Remove-Node-btn" role="button" class="btn btn-primary"
+						data-toggle ="button"><i class="icon-map-marker icon-white"></i></a>
+				</div>
+				<br /> <br />
+
+				<h3>Link Tools</h3>
+				<div class="btn-group edit-group">
+					<a href="#" class="btn netview-modal-btn set-links"
+						data-name="addLinkModal">Add Link</a>
+					<a href="#" id="click-Add-Link-btn" role="button" class="btn btn-primary"
+						data-toggle ="button"><i class="icon-map-marker icon-white"></i></a>
+				</div>
+
+				<br /> <br />
+
+				<div class="btn-group edit-group">
+					<a href="#" class="btn netview-modal-btn set-links"
+						data-name="removeLinkModal">Remove Link</a>
+					<a href="#" id="click-Remove-Link-btn" role="button" class="btn btn-primary"
+						data-toggle ="button"><i class="icon-map-marker icon-white"></i></a>
+				</div>
+
+				<br /> <br />
+
+				<h3>Order Tools</h3>
+				<div class="btn-group edit-group">
+					<a href="#" class="btn netview-modal-btn set-orders"
+						data-name="addOrderModal">Add Order</a>
+					<a href="#" id="click-Add-Order-btn" role="button" class="btn btn-primary"
+						data-toggle ="button"><i class="icon-map-marker icon-white"></i></a>
+				</div>
+
+				<br /> <br />
+
+				<div class="btn-group edit-group">
+					<a href="#" class="btn netview-modal-btn set-orders"
+						data-name="removeOrderModal">Remove Order</a>
+					<a href="#" id="click-Remove-Order-btn" role="button" class="btn btn-primary"
+						data-toggle ="button"><i class="icon-map-marker icon-white"></i></a>
+				</div>
+
+				<br /> <br />
+				<h3>Network Cost Tools</h3>
+
+				<button class="btn btn-primary" onclick="editNetwork()">Edit Network Costs</button>
+				
+
+			</div>
+			<div id="optimize-sidebar">
+				<div class="show-unoptimized">
+					<h3>Optimization</h3>
+					This network has not been optimized.
+					<br />
+					<button id="sidebar-optimize-btn" class="btn btn-primary">Optimize</button>
+				</div>
+				<div id="optimize-sidebar-content" class="show-optimized"></div>
+			</div>
+		</div>
+	</div>
+</div>
+
+<div id="map_canvas"></div>
+<div id="legend" style="left: -108px;">
+	<div class="main">
+		<strong>Subscription</strong>
+		<table style="margin-left: 2px;">
+			<tr>
+				<td> <div style="background-color: #ff6029; width: 15px; height: 15px;"></div> </td>
+				<td> 100% </td>
+			</tr>
+			<tr>
+				<td rowspan="2">
+					<div style="
+						background-image: url(@Url.Content("~/Content/img/legend_gradient.png"));
+						background-repeat: repeat-x;
+						width: 15px;
+						height: 80px;"></div>
+				</td>
+				<td> 99% </td>
+			</tr>
+			<tr><td style="vertical-align: bottom;"> 1% </td></tr>
+			<tr>
+				<td> <div style="background-color: #000; width: 15px; height: 15px;"></div> </td>
+				<td> 0% </td>
+			</tr>
+		</table>
+	</div>
+	<div class="button-div">
+		<a href="#" id="toggle-legend">
+			<i class="icon-arrow-left close-btn" style="display: none;"></i>
+			<i class="icon-arrow-right open-btn"></i>
+		</a>
+	</div>
+</div>
+
+<!-- The Report pullover -->
+<div id="report-pullover" style="
+	position:fixed;
+	top: 40px;
+	width: 100%;
+	background-color: #f5f5f5;
+	overflow-y: auto;
+	display: none;">
+
+	<div class="modal-header" style="background-color: #fff;">
+		Report
+		<button type="button" class="close" onclick="hidePullover()">×</button>
+	</div>
+	<div class="modal-body" style="background-color: #fff; max-height: none; overflow-y: auto;">
+	</div>
+	<div class="modal-footer">
+		<button class="btn" data-dismiss="modal" aria-hidden="true">Print</button>
+		<button class="btn btn-primary" onclick="hidePullover()">Close</button>
+	</div>
+	<div style="height: 250px;"></div>
+</div>
+
+
+@using(Html.BeginForm("addNode", "Network", FormMethod.Post, new { enctype = "multipart/form-data" , id = "addNode"}))
+{
+	{
+<!-- Add a node Modal -->
+<div id="addNodeModal" class="modal hide fade" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
+  <div class="modal-header">
+	<button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
+	<h3 id="myModalLabel">Add Node</h3>
+  </div>
+  <div class="modal-body">
+	<div class="control-group">				
+
+				<label class="control-label" for="stationCode">Station Code</label>
+				<div class="controls">					
+						@Html.TextBoxFor(m => m.NewNode.StationCode, new { required = "true", placeholder = "Station Code" })
+					
+					<span class="text-error">@Html.ValidationMessageFor(m => Model.NewNode.StationCode)</span>	
+				</div>
+			</div>
+			<div class="control-group">
+				<label class="control-label" for="city">City</label>
+				<div class="controls">
+						@Html.TextBoxFor(m => m.NewNode.Name, new {  placeholder = "City" })
+					<span class="text-error">@Html.ValidationMessageFor(m => Model.NewNode.Name)</span>					
+				</div>
+			</div>
+
+			<div class="control-group">
+				<label class="control-label" for="inputLatitude">Latitude</label>
+				<div class="controls">
+						@Html.TextBoxFor(m => m.NewNode.Location.Latitude, new { required = "true", placeholder = "Latitude" })
+					<span class="text-error">@Html.ValidationMessageFor(m => Model.NewNode.Location.Latitude)</span>					
+				</div>
+			</div>
+
+			<div class="control-group">
+				<label class="control-label" for="inputLongitude">Longitude</label>
+				<div class="controls">
+						@Html.TextBoxFor(m => m.NewNode.Location.Longitude, new { required = "true", placeholder = "Longitude" })
+					<span class="text-error">@Html.ValidationMessageFor(m => Model.NewNode.Location.Longitude)</span>	
+				</div>
+			</div>
+
+		<div class="control-group">
+				<label class="control-label" for="inputCapacity">Car Capacity</label>
+				<div class="controls">
+						@Html.TextBoxFor(m => m.NewNode.CarCapacity, new { required ="true", placeholder = "Car Capacity" })					
+					<span class="text-error">@Html.ValidationMessageFor(m => Model.NewNode.CarCapacity)</span>	
+				</div>
+			</div>
+
+			
+			<div class="control-group">
+				<label class="control-label" for="NetworkID"></label>
+				<div class="controls">
+						@Html.HiddenFor(m => Model.ID, new { placeholder = @Model.ID})					
+				</div>
+			</div>
+
+  </div>
+
+  <div class="modal-footer">
+	<button type="button" class="btn" data-dismiss="modal" aria-hidden="true">Close</button>
+	  <button class="btn" onclick="addAnotherNode()">Add Another Node</button>
+	  <button type="submit" class="btn btn-primary">Save Changes</button>
+  </div>
+</div>
+}
+}
+
+
+
+@using(Html.BeginForm("addNode", "Network", FormMethod.Post, new { enctype = "multipart/form-data" , id = "clickAddNode"}))
+{ 
+	{
+<!-- Add a node Modal -->
+<div id="clickNodeModal" class="modal hide fade" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
+  <div class="modal-header">
+	<button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
+	<h3 id="myClickModalLabel">Add Node</h3>
+  </div>
+  <div class="modal-body">
+	<div class="control-group">				
+
+				<label class="control-label" for="stationCode">Station Code</label>
+				<div class="controls">					
+						@Html.TextBoxFor(m => m.NewNode.StationCode, new { required ="true", placeholder = "Station Code" })
+					<span class="text-error">@Html.ValidationMessageFor(m => Model.NewNode.StationCode)</span>	
+				</div>
+			</div>
+
+			<div class="control-group">
+				<label class="control-label" for="city">City</label>
+				<div class="controls">
+						@Html.TextBoxFor(m => m.NewNode.Name, new { @class = "City" })
+					<span class="text-error">@Html.ValidationMessageFor(m => Model.NewNode.Name)</span>					
+				</div>
+			</div>
+
+			<div class="control-group">
+				<label class="control-label" for="inputLongitude">Latitude</label>
+				<div class="controls">
+						@Html.TextBoxFor(m => m.NewNode.Location.Latitude, new { required = true, @class = "Latitude"})
+					<span class="text-error">@Html.ValidationMessageFor(m => Model.NewNode.Location.Latitude)</span>	
+				</div>
+			</div>
+
+			<div class="control-group">
+				<label class="control-label" for="inputLongitude">Longitude</label>
+				<div class="controls">
+						@Html.TextBoxFor(m => Model.NewNode.Location.Longitude, new { required = true, @class = "Longitude"})
+					<span class="text-error">@Html.ValidationMessageFor(m => Model.NewNode.Location.Longitude)</span>	
+				</div>
+			</div>
+
+		<div class="control-group">
+				<label class="control-label" for="inputCapacity">Car Capacity</label>
+				<div class="controls">
+						@Html.TextBoxFor(m => Model.NewNode.CarCapacity, new { required ="true", placeholder = "Car Capacity" })
+					<span class="text-error">@Html.ValidationMessageFor(m => Model.NewNode.CarCapacity)</span>	
+				</div>
+			</div>
+			
+			<div class="control-group">
+				<label class="control-label" for="NetworkID"></label>
+				<div class="controls">
+						@Html.HiddenFor(m => Model.ID, new { placeholder = @Model.ID })
+				</div>
+			</div>
+
+  </div>
+
+  <div class="modal-footer">
+	<button type="button" class="btn" data-dismiss="modal" aria-hidden="true">Close</button>
+	<button type="submit" class="btn">Add Another Node</button>
+	  <button class="btn btn-primary" data-dismiss="modal" aria-hidden="true" onclick="addAnotherNode()">Save Changes</button>
+	  
+  </div>
+</div>
+	}
+}
+
+@using(Html.BeginForm("editNode", "Network", FormMethod.Post, new { enctype = "multipart/form-data" , id = "editNode"}))
+{ 
+	{
+<!-- Edit a node Modal -->
+<div id="editNodeModal" class="modal hide fade" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
+  <div class="modal-header">
+	<button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
+	<h3 id="editNodeLabel">Edit Node</h3>
+  </div>
+  <div class="modal-body">
+	<div class="control-group">				
+
+				<label class="control-label" for="stationCode">Station Code</label>
+				<div class="controls">					
+						@Html.TextBoxFor(m => Model.NewNode.StationCode, new { required ="true", @class = "nodeStationCode" })
+					
+					<span class="text-error">@Html.ValidationMessageFor(m => Model.NewNode.StationCode)</span>	
+				</div>
+			</div>
+			<div class="control-group">
+				<label class="control-label" for="city">City</label>
+				<div class="controls">
+						@Html.TextBoxFor(m => Model.NewNode.Name, new { @class = "nodeCity" })					
+					<span class="text-error">@Html.ValidationMessageFor(m => Model.NewNode.Name)</span>					
+				</div>
+			</div>
+	  
+			<div class="control-group">
+				<label class="control-label" for="inputLatitude">Latitude</label>
+				<div class="controls">
+						@Html.TextBoxFor(m => Model.NewNode.Location.Latitude, new { required ="true", @class = "nodeLatitude"})					
+					<span class="text-error">@Html.ValidationMessageFor(m => Model.NewNode.Location.Latitude)</span>					
+				</div>
+			</div>
+
+			<div class="control-group">
+				<label class="control-label" for="inputLongitude">Longitude</label>
+				<div class="controls">
+						@Html.TextBoxFor(m => Model.NewNode.Location.Longitude, new { required ="true", @class = "nodeLongitude" })					
+					<span class="text-error">@Html.ValidationMessageFor(m => Model.NewNode.Location.Longitude)</span>	
+				</div>
+			</div>
+
+		<div class="control-group">
+				<label class="control-label" for="inputCapacity">Car Capacity</label>
+				<div class="controls">
+						@Html.TextBoxFor(m => Model.NewNode.CarCapacity, new { required ="true", @class = "carCapacity" })					
+					<span class="text-error">@Html.ValidationMessageFor(m => Model.NewNode.CarCapacity)</span>	
+				</div>
+			</div>
+
+	  <div class="control-group">
+				<label class="control-label" for="NodeID"></label>
+				<div class="controls">
+						@Html.HiddenFor(m => Model.NewNode.ID, new { @class = "nodeID"})					
+				</div>
+			</div>
+
+			
+			<div class="control-group">
+				<label class="control-label" for="NetworkID"></label>
+				<div class="controls">
+						@Html.HiddenFor(m => Model.ID, new { placeholder = @Model.ID})					
+				</div>
+			</div>
+
+  </div>
+
+  <div class="modal-footer">
+	<button type="button" class="btn" data-dismiss="modal" aria-hidden="true">Close</button>
+	<button type="submit" class="btn btn-primary">Save Changes</button>
+  </div>
+</div>
+}
+}
+
+@using (Html.BeginForm("removeNode", "Network", FormMethod.Post, new { enctype = "multipart/form-data" }))
+{
+	{
+<!-- Remove a node Modal -->
+<div id="removeNodeModal" class="modal hide fade" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
+  <div class="modal-header">
+	<button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
+	<h3 id="myRemoveModalLabel">Remove Node</h3>
+  </div>
+  <div class="modal-body">
+	<div class="control-group">				
+
+				<label class="control-label" for="stationCode">Station Code</label>
+				<div id="element" class="controls">					
+						@Html.DropDownListFor(m => Model.NewNode.StationCode, new SelectList(Model.sCodeList, "StationCode", "StationCode"), new { required ="true", @class = "NodeStationCode" })
+					<span class="text-error">@Html.ValidationMessageFor(m => Model.NewNode.StationCode)</span>	
+				</div>
+			</div>
+			
+			<div class="control-group">
+				<label class="control-label" for="NetworkID"></label>
+				<div class="controls">
+						@Html.HiddenFor(m => Model.ID, new { placeholder = @Model.ID })
+				</div>
+			</div>
+  </div>
+
+  <div class="modal-footer">
+	<button type="button" class="btn" data-dismiss="modal" aria-hidden="true">Close</button>
+	  <button class="btn" onclick="removeAnotherNode()">Remove Another Node</button>
+	<button type="submit" class="btn btn-primary">Save changes</button>  
+  </div>
+</div>
+}
+}
+
+@using (Html.BeginForm("removeNode", "Network", FormMethod.Post, new { enctype = "multipart/form-data", id = "clickRemoveNode" }))
+{ 
+	{
+<!-- Remove a node Modal -->
+<div id="removeNodeClickModal" class="modal hide fade" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
+  <div class="modal-header">
+	<button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
+	<h3 id="myRemoveClickModalLabel">Remove Node</h3>
+  </div>
+  <div class="modal-body">
+	<div class="control-group">				
+
+				<label class="control-label" for="stationCode">Station Code</label>
+				<div class="controls">					
+						@Html.DropDownListFor(m => Model.NewNode.StationCode, new SelectList(Model.sCodeList, "StationCode", "StationCode"), new { required ="true", @class = "NodeStationCode" })
+					<span class="text-error">@Html.ValidationMessageFor(m => Model.NewNode.StationCode)</span>	
+				</div>
+			</div>
+			
+			<div class="control-group">
+				<label class="control-label" for="NetworkID"></label>
+				<div class="controls">
+						@Html.HiddenFor(m => Model.ID, new { placeholder = @Model.ID})
+				</div>
+			</div>
+  </div>
+
+  <div class="modal-footer">
+	<button type="button" class="btn" data-dismiss="modal" aria-hidden="true">Close</button>
+	  <button type="submit" class="btn">Remove Another Node</button>
+	  <button class="btn btn-primary" data-dismiss="modal" aria-hidden="true" onclick="removeAnotherNode()">Save Changes</button>	  
+  </div>
+</div>
+	}
+}
+
+
+@using (Html.BeginForm("addLink", "Network", FormMethod.Post, new { enctype = "multipart/form-data" }))
+{
+	{
+<!-- Add a link Modal -->
+<div id="addLinkModal" class="modal hide fade" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
+  <div class="modal-header">
+	<button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
+	<h3 id="linkModalLabel">Add Link</h3>
+  </div>
+  <div class="modal-body">
+	
+			<div class="control-group">
+				<label class="control-label" for="fromStationCode">From: Station Code</label>
+				<div class="controls">
+							@Html.DropDownListFor(m => Model.NewLink.From.StationCode, new SelectList(Model.sCodeList, "StationCode", "StationCode"), new { required ="true", @class = "NodeStationCode" })
+					<span class="text-error">@Html.ValidationMessageFor(m => Model.NewLink.From.StationCode)</span>					
+				</div>
+			</div>
+
+	  <div class="control-group">		
+				<label class="control-label" for="toStationCode">To: Station Code</label>
+				<div class="controls">					
+						@Html.DropDownListFor(m => Model.NewLink.To.StationCode, new SelectList(Model.sCodeList, "StationCode", "StationCode"), new { required ="true", @class = "NodeStationCode" })
+					<span class="text-error">@Html.ValidationMessageFor(m => Model.NewLink.To.StationCode)</span>						
+				</div>
+			</div>
+
+	   <div class="control-group">
+				<label class="control-label" for="direction">Make Link in One Direction</label>
+				<div class="controls">
+						@Html.CheckBoxFor(m => Model.IsOneDirectional)			
+				</div>
+			</div>
+
+			<div class="control-group">
+				<label class="control-label" for="distance">Distance</label>
+				<div class="controls">
+						@Html.TextBoxFor(m => Model.NewLink.Distance, new { required = "true", placeholder = "Distance" })
+					<span class="text-error">@Html.ValidationMessageFor(m => Model.NewLink.Distance)</span>						
+				</div>
+			</div>
+
+			<div class="control-group">
+				<label class="control-label" for="capacityMean"> Max Train Count</label>
+				<div class="controls">
+						@Html.TextBoxFor(m => Model.NewLink.MaxTrains, new { required ="true", placeholder = "Max Trains" })
+					<span class="text-error">@Html.ValidationMessageFor(m => Model.NewLink.MaxTrains)</span>						
+				</div>
+			</div>
+
+		<div class="control-group">
+				<label class="control-label" for="capacityMean"> Fuel Adjustment</label>
+				<div class="controls">
+						@Html.TextBoxFor(m => Model.NewLink.FuelAdjustment, new { required ="true" })
+					<span class="text-error">@Html.ValidationMessageFor(m => Model.NewLink.FuelAdjustment)</span>						
+				</div>
+			</div>
+
+		<div class="control-group">
+				<label class="control-label" for="NetworkID"></label>
+				<div class="controls">
+						@Html.HiddenFor(m => Model.ID, new { placeholder = @Model.ID})
+				</div>
+			</div>
+  </div>
+
+
+  <div class="modal-footer">
+	<button type="button" class="btn" data-dismiss="modal" aria-hidden="true">Close</button>
+	  <button class="btn" onclick="addAnotherLink()">Add Another Link</button>
+	  <button type="submit" class="btn btn-primary">Save changes</button>
+  </div>
+</div>
+}
+}
+
+
+@using(Html.BeginForm("addLink", "Network", FormMethod.Post, new { enctype = "multipart/form-data" }))
+{ 
+	{
+<!-- Add a link Modal -->
+<div id="clickLinkModal" class="modal hide fade" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
+  <div class="modal-header">
+	<button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
+	<h3 id="linkClickModalLabel">Add Link</h3>
+  </div>
+  <div class="modal-body">
+	
+			<div class="control-group">
+				<label class="control-label" for="fromStationCode">From: Station Code</label>
+				<div class="controls">
+							@Html.DropDownListFor(m => Model.NewLink.From.StationCode, new SelectList(Model.sCodeList, "StationCode", "StationCode"), new { required ="true", @class = "linkFrom" })
+					<span class="text-error">@Html.ValidationMessageFor(m => Model.NewLink.From.StationCode)</span>					
+				</div>
+			</div>
+
+			<div class="control-group">		
+				<label class="control-label" for="toStationCode">To: Station Code</label>
+				<div class="controls">					
+						@Html.DropDownListFor(m => Model.NewLink.To.StationCode, new SelectList(Model.sCodeList, "StationCode", "StationCode"), new { required ="true", @class = "linkTo" })
+					<span class="text-error">@Html.ValidationMessageFor(m => Model.NewLink.To.StationCode)</span>						
+				</div>
+			</div>
+
+			<div class="control-group">
+				<label class="control-label" for="direction">Make Link in One Direction</label>
+				<div class="controls">
+						@Html.CheckBoxFor(m => Model.IsOneDirectional)			
+				</div>
+			</div>
+
+			<div class="control-group">
+				<label class="control-label" for="distance">Distance</label>
+				<div class="controls">
+						@Html.TextBoxFor(m => Model.NewLink.Distance, new { required ="true", @class = "Distance" })
+					<span class="text-error">@Html.ValidationMessageFor(m => Model.NewLink.Distance)</span>						
+				</div>
+			</div>
+
+			<div class="control-group">
+				<label class="control-label" for="capacityMean"> Max Train Count</label>
+				<div class="controls">
+						@Html.TextBoxFor(m => Model.NewLink.MaxTrains, new { required ="true", placeholder = "Max Trains" })
+					<span class="text-error">@Html.ValidationMessageFor(m => Model.NewLink.MaxTrains)</span>						
+				</div>
+			</div>
+
+		<div class="control-group">
+				<label class="control-label" for="capacityMean"> Fuel Adjustment</label>
+				<div class="controls">
+						@Html.TextBoxFor(m => Model.NewLink.FuelAdjustment, new { required ="true" })
+					<span class="text-error">@Html.ValidationMessageFor(m => Model.NewLink.FuelAdjustment)</span>						
+				</div>
+			</div>
+
+		<div class="control-group">
+				<label class="control-label" for="NetworkID"></label>
+				<div class="controls">
+						@Html.HiddenFor(m => Model.ID, new { placeholder = @Model.ID })
+				</div>
+			</div>
+  </div>
+
+
+  <div class="modal-footer">
+	<button type="button" class="btn" data-dismiss="modal" aria-hidden="true">Close</button>
+	  <button type="submit" class="btn">Add Another Link</button>
+	  <button class="btn btn-primary" data-dismiss="modal" aria-hidden="true" onclick="addAnotherLink()">Save Changes</button>
+	
+	  
+  </div>
+</div>
+	}
+}
+
+@using(Html.BeginForm("editLink", "Network", FormMethod.Post, new { enctype = "multipart/form-data" }))
+{ 
+	{
+<!-- Edit a link Modal -->
+<div id="editLinkModal" class="modal hide fade" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
+  <div class="modal-header">
+	<button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
+	<h3 id="editlinkModalLabel">Edit Link</h3>
+  </div>
+  <div class="modal-body">
+	
+			<div class="control-group">
+				<label class="control-label" for="fromStationCode">From: Station Code</label>
+				<div class="controls">
+							@Html.DropDownListFor(m => Model.NewLink.From.StationCode, new SelectList(Model.sCodeList, "StationCode", "StationCode"), new { required ="true", @class = "LinkFromID" })
+					<span class="text-error">@Html.ValidationMessageFor(m => Model.NewLink.From.StationCode)</span>					
+				</div>
+			</div>
+
+			<div class="control-group">		
+				<label class="control-label" for="toStationCode">To: Station Code</label>
+				<div class="controls">					
+						@Html.DropDownListFor(m => Model.NewLink.To.StationCode, new SelectList(Model.sCodeList, "StationCode", "StationCode"), new { required ="true", @class = "LinkToID" })
+					<span class="text-error">@Html.ValidationMessageFor(m => Model.NewLink.To.StationCode)</span>						
+				</div>
+			</div>
+
+			<div class="control-group">
+				<label class="control-label" for="distance">Distance</label>
+				<div class="controls">
+						@Html.TextBoxFor(m => Model.NewLink.Distance, new { required ="true", @class = "LinkDistance" })
+					<span class="text-error">@Html.ValidationMessageFor(m => Model.NewLink.Distance)</span>						
+				</div>
+			</div>
+
+			<div class="control-group">
+				<label class="control-label" for="capacityMean"> Max Train Count</label>
+				<div class="controls">
+						@Html.TextBoxFor(m => Model.NewLink.MaxTrains, new { required ="true", @class = "LinkMaxTrains" })
+					<span class="text-error">@Html.ValidationMessageFor(m => Model.NewLink.MaxTrains)</span>						
+				</div>
+			</div>
+
+	  <div class="control-group">
+				<label class="control-label" for="capacityMean"> Fuel Adjustment</label>
+				<div class="controls">
+						@Html.TextBoxFor(m => Model.NewLink.FuelAdjustment, new { required ="true", @class = "Fuel" })
+					<span class="text-error">@Html.ValidationMessageFor(m => Model.NewLink.FuelAdjustment)</span>						
+				</div>
+			</div>
+
+		<div class="control-group">
+				<label class="control-label" for="NetworkID"></label>
+				<div class="controls">
+						@Html.HiddenFor(m => Model.ID, new { placeholder = @Model.ID})
+				</div>
+			</div>
+
+	   <div class="control-group">
+				<label class="control-label" for="LinkID"></label>
+				<div class="controls">
+						@Html.HiddenFor(m => Model.NewLink.ID, new { @class = "LinkID"})					
+				</div>
+			</div>
+  </div>
+
+
+  <div class="modal-footer">
+	<button type="button" class="btn" data-dismiss="modal" aria-hidden="true">Close</button>
+	<button type="submit" class="btn btn-primary">Save changes</button>
+  </div>
+</div>
+}
+}
+
+
+@using (Html.BeginForm("removeLink", "Network", FormMethod.Post, new { enctype = "multipart/form-data" }))
+{
+	{
+<!-- Remove a link Modal -->
+<div id="removeLinkModal" class="modal hide fade" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
+  <div class="modal-header">
+	<button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
+	<h3 id="myRemoveLinkModalLabel">Remove Link</h3>
+  </div>
+  <div class="modal-body">
+	
+			<div class="control-group">
+				<label class="control-label" for="fromStationCode">From: Station Code</label>
+				<div class="controls">
+							@Html.DropDownListFor(m => Model.NewLink.From.StationCode, new SelectList(Model.sCodeList, "StationCode", "StationCode"), new { required ="true", @class = "NodeStationCode" })
+					<span class="text-error">@Html.ValidationMessageFor(m => Model.NewLink.From.StationCode)</span>					
+				</div>
+			</div>
+
+			<div class="control-group">		
+				<label class="control-label" for="toStationCode">To: Station Code</label>
+				<div class="controls">					
+						@Html.DropDownListFor(m => Model.NewLink.To.StationCode, new SelectList(Model.sCodeList, "StationCode", "StationCode"), new { required ="true", @class = "NodeStationCode" })
+					<span class="text-error">@Html.ValidationMessageFor(m => Model.NewLink.To.StationCode)</span>						
+				</div>
+			</div>
+
+			<div class="control-group">
+				<label class="control-label" for="direction">Remove Link in One Direction</label>
+				<div class="controls">
+						@Html.CheckBoxFor(m => Model.IsOneDirectional)			
+				</div>
+			</div>
+
+			
+			<div class="control-group">
+				<label class="control-label" for="NetworkID"></label>
+				<div class="controls">
+						@Html.HiddenFor(m => Model.ID, new { placeholder = @Model.ID })
+				</div>
+			</div>
+
+  </div>
+
+  <div class="modal-footer">
+	<button type="button" class="btn" data-dismiss="modal" aria-hidden="true">Close</button>
+	  <button class="btn" onclick="removeAnotherLink()">Remove Another Link</button>
+	<button type="submit" class="btn btn-primary">Save changes</button>
+	  
+  </div>
+</div>
+	}
+}
+
+
+@using(Html.BeginForm("removeLink", "Network", FormMethod.Post, new { enctype = "multipart/form-data" }))
+{
+	{
+<!-- Remove a link Modal -->
+<div id="clickRemoveLinkModal" class="modal hide fade" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
+  <div class="modal-header">
+	<button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
+	<h3 id="clickRemoveLinkModalLabel">Remove Link</h3>
+  </div>
+  <div class="modal-body">
+	
+			<div class="control-group">
+				<label class="control-label" for="fromStationCode">From: Station Code</label>
+				<div class="controls">
+							@Html.DropDownListFor(m => Model.NewLink.From.StationCode, new SelectList(Model.sCodeList, "StationCode", "StationCode"), new { required ="true", @class = "LinkFrom" })
+					<span class="text-error">@Html.ValidationMessageFor(m => Model.NewLink.From.StationCode)</span>					
+				</div>
+			</div>
+
+			 <div class="control-group">		
+				<label class="control-label" for="toStationCode">To: Station Code</label>
+				<div class="controls">					
+						@Html.DropDownListFor(m => Model.NewLink.To.StationCode, new SelectList(Model.sCodeList, "StationCode", "StationCode"), new { required ="true", @class = "LinkTo" })
+					<span class="text-error">@Html.ValidationMessageFor(m => Model.NewLink.To.StationCode)</span>						
+				</div>
+			</div>
+
+			<div class="control-group">
+				<label class="control-label" for="direction">Remove Link in One Direction</label>
+				<div class="controls">
+						@Html.CheckBoxFor(m => Model.IsOneDirectional)			
+				</div>
+			</div>
+
+			
+			<div class="control-group">
+				<label class="control-label" for="NetworkID"></label>
+				<div class="controls">
+						@Html.HiddenFor(m => Model.ID, new { placeholder = @Model.ID})	
+				</div>
+			</div>
+
+  </div>
+
+  <div class="modal-footer">
+	<button type="button" class="btn" data-dismiss="modal" aria-hidden="true">Close</button>
+	  <button type="submit" class="btn">Remove Another Link</button>
+	  <button class="btn btn-primary" data-dismiss="modal" aria-hidden="true" onclick="removeAnotherLink()">Save Changes</button>
+	
+	  
+  </div>
+</div>
+}
+}
+
+@using(Html.BeginForm("addOrder", "Network", FormMethod.Post, new { enctype = "multipart/form-data" }))
+{ 
+	{
+<!-- Add an Order Modal -->
+<div id="addOrderModal" class="modal hide fade" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
+  <div class="modal-header">
+	<button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
+	<h3 id="editOrderLabel">Add Order</h3>
+  </div>
+  <div class="modal-body">
+	
+			<div class="control-group">
+				<label class="control-label" for="fromStationCode">From: Station Code</label>
+				<div class="controls">					
+						@Html.DropDownListFor(m => Model.NewOrder.Origin.StationCode, new SelectList(Model.sCodeList, "StationCode", "StationCode"), new { required ="true", @class = "NodeStationCode" })
+					<span class="text-error">@Html.ValidationMessageFor(m => Model.NewOrder.Origin.StationCode)</span>						
+				</div>
+			</div>
+
+			<div class="control-group">
+				<label class="control-label" for="toStationCode">To: Station Code</label>
+				<div class="controls">					
+						@Html.DropDownListFor(m => Model.NewOrder.Destination.StationCode, new SelectList(Model.sCodeList, "StationCode", "StationCode"), new { required ="true", @class = "NodeStationCode" })
+					<span class="text-error">@Html.ValidationMessageFor(m => Model.NewOrder.Destination.StationCode)</span>						
+				</div>
+			</div>
+
+			<div class="control-group">
+				<label class="control-label" for="numOfCars">Number of Cars</label>
+				<div class="controls">					
+						@Html.TextBoxFor(m => Model.NewOrder.Cars, new { required = "true", placeholder = "0" })
+					<span class="text-error">@Html.ValidationMessageFor(m => Model.NewOrder.Cars)</span>						
+				</div>
+			</div>
+
+			<div class="control-group">
+				<label class="control-label" for="revenue">Revenue</label>
+				<div class="controls">					
+						@Html.TextBoxFor(m => Model.NewOrder.Revenue, new { required = "true", placeholder = "0" })
+					<span class="text-error">@Html.ValidationMessageFor(m => Model.NewOrder.Revenue)</span>						
+				</div>
+			</div>
+		<div class="control-group">
+				<label class="control-label" for="NetworkID"></label>
+				<div class="controls">
+						@Html.HiddenFor(m => Model.ID, new { placeholder = @Model.ID })
+				</div>
+			</div>
+  </div>
+
+
+  <div class="modal-footer">
+	<button type="button" class="btn" data-dismiss="modal" aria-hidden="true">Close</button>
+	  <button class="btn" onclick="addAnotherOrder()">Add Another Order</button>
+	<button type="submit" class="btn btn-primary">Save changes</button>
+  </div>
+</div>
+	}
+}
+
+
+@using(Html.BeginForm("addOrder", "Network", FormMethod.Post, new { enctype = "multipart/form-data" }))
+{ 
+	{
+<!-- Add an Order Modal -->
+<div id="clickOrderModal" class="modal hide fade" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
+  <div class="modal-header">
+	<button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
+	<h3 id="clickOrderLabel">Add Order</h3>
+  </div>
+  <div class="modal-body">
+		
+			<div class="control-group">
+				<label class="control-label" for="fromStationCode">From: Station Code</label>
+				<div class="controls">					
+						@Html.DropDownListFor(m => Model.NewOrder.Origin.StationCode, new SelectList(Model.sCodeList, "StationCode", "StationCode"), new { required ="true", @class = "orderFrom" })
+					<span class="text-error">@Html.ValidationMessageFor(m => Model.NewOrder.Origin.StationCode)</span>						
+				</div>
+			</div>
+
+			<div class="control-group">
+				<label class="control-label" for="toStationCode">To: Station Code</label>
+				<div class="controls">					
+						@Html.DropDownListFor(m => Model.NewOrder.Destination.StationCode, new SelectList(Model.sCodeList, "StationCode", "StationCode"), new { required ="true", @class = "orderTo" })
+					<span class="text-error">@Html.ValidationMessageFor(m => Model.NewOrder.Destination.StationCode)</span>						
+				</div>
+			</div>
+
+			<div class="control-group">
+				<label class="control-label" for="numOfCars">Number of Cars</label>
+				<div class="controls">					
+						@Html.TextBoxFor(m => Model.NewOrder.Cars, new { required ="true", placeholder = "0" })
+					<span class="text-error">@Html.ValidationMessageFor(m => Model.NewOrder.Cars)</span>						
+				</div>
+			</div>
+
+			<div class="control-group">
+				<label class="control-label" for="revenue">Revenue</label>
+				<div class="controls">					
+						@Html.TextBoxFor(m => Model.NewOrder.Revenue, new { required ="true", placeholder = "0" })
+					<span class="text-error">@Html.ValidationMessageFor(m => Model.NewOrder.Revenue)</span>						
+				</div>
+			</div>
+		<div class="control-group">
+				<label class="control-label" for="NetworkID"></label>
+				<div class="controls">
+						@Html.HiddenFor(m => Model.ID, new { placeholder = @Model.ID})
+				</div>
+			</div>
+  </div>
+
+
+  <div class="modal-footer">
+	<button type="button" class="btn" data-dismiss="modal" aria-hidden="true">Close</button>
+	  <button type="submit" class="btn">Add Another Order</button>
+	  <button class="btn btn-primary" data-dismiss="modal" aria-hidden="true" onclick="addAnotherOrder()">Save Changes</button>
+	
+  </div>
+</div>
+}
+}
+
+@using(Html.BeginForm("editOrder", "Network", FormMethod.Post, new { enctype = "multipart/form-data" }))
+{ 
+	{
+<!-- Add an Order Modal -->
+<div id="editOrderModal" class="modal hide fade" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
+  <div class="modal-header">
+	<button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
+	<h3 id="linkOrderLabel">Edit Order</h3>
+  </div>
+  <div class="modal-body">
+
+			<div class="control-group">
+				<label class="control-label" for="fromStationCode">From: Station Code</label>
+				<div class="controls">					
+						@Html.DropDownListFor(m => Model.NewOrder.Origin.StationCode, new SelectList(Model.sCodeList, "StationCode", "StationCode"), new { required ="true", @class = "OrderFromID" })
+					<span class="text-error">@Html.ValidationMessageFor(m => Model.NewOrder.Origin.StationCode)</span>						
+				</div>
+			</div>
+
+			<div class="control-group">
+				<label class="control-label" for="toStationCode">To: Station Code</label>
+				<div class="controls">					
+						@Html.DropDownListFor(m => Model.NewOrder.Destination.StationCode, new SelectList(Model.sCodeList, "StationCode", "StationCode"), new { required ="true", @class = "OrderToID" })
+					<span class="text-error">@Html.ValidationMessageFor(m => Model.NewOrder.Destination.StationCode)</span>						
+				</div>
+			</div>
+
+			<div class="control-group">
+				<label class="control-label" for="numOfCars">Number of Cars</label>
+				<div class="controls">					
+						@Html.TextBoxFor(m => Model.NewOrder.Cars, new { required ="true", @class="OrderCars" })
+					<span class="text-error">@Html.ValidationMessageFor(m => Model.NewOrder.Cars)</span>						
+				</div>
+			</div>
+
+			<div class="control-group">
+				<label class="control-label" for="revenue">Revenue</label>
+				<div class="controls">					
+						@Html.TextBoxFor(m => Model.NewOrder.Revenue, new { required ="true", @class="OrderRevenue" })
+					<span class="text-error">@Html.ValidationMessageFor(m => Model.NewOrder.Revenue)</span>						
+				</div>
+			</div>
+		<div class="control-group">
+				<label class="control-label" for="NetworkID"></label>
+				<div class="controls">
+						@Html.HiddenFor(m => Model.ID, new { placeholder = @Model.ID})
+				</div>
+			</div>
+	  <div class="control-group">
+				<label class="control-label" for="OrderID"></label>
+				<div class="controls">
+						@Html.HiddenFor(m => Model.NewOrder.ID, new { @class = "OrderID"})					
+				</div>
+			</div>
+  </div>
+
+
+  <div class="modal-footer">
+	<button type="button" class="btn" data-dismiss="modal" aria-hidden="true">Close</button>
+	<button type="submit" class="btn btn-primary">Save changes</button>
+  </div>
+</div>
+}
+}
+
+@using (Html.BeginForm("removeOrder", "Network", FormMethod.Post, new { enctype = "multipart/form-data" }))
+{
+	{
+<!-- remove an Order Modal -->
+<div id="removeOrderModal" class="modal hide fade" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
+  <div class="modal-header">
+	<button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
+	<h3 id="removeOrderLabel">Remove Order</h3>
+  </div>
+  <div class="modal-body">
+	
+			<div class="control-group">
+				<label class="control-label" for="fromStationCode">From: Station Code</label>
+				<div class="controls">
+							@Html.DropDownListFor(m => Model.NewOrder.Origin.StationCode, new SelectList(Model.sCodeList, "StationCode", "StationCode"), new { required ="true", @class = "NodeStationCode" })
+					<span class="text-error">@Html.ValidationMessageFor(m => Model.NewOrder.Origin.StationCode)</span>					
+				</div>
+			</div>
+
+			 <div class="control-group">		
+				<label class="control-label" for="toStationCode">To: Station Code</label>
+				<div class="controls">					
+						@Html.DropDownListFor(m => Model.NewOrder.Destination.StationCode, new SelectList(Model.sCodeList, "StationCode", "StationCode"), new { required ="true", @class = "NodeStationCode" })
+					<span class="text-error">@Html.ValidationMessageFor(m => Model.NewOrder.Destination.StationCode)</span>						
+				</div>
+			</div>
+		
+		<div class="control-group">
+				<label class="control-label" for="NetworkID"></label>
+				<div class="controls">
+						@Html.HiddenFor(m => Model.ID, new { placeholder = @Model.ID })
+				</div>
+			</div>
+  </div>
+
+
+  <div class="modal-footer">
+	<button type="button" class="btn" data-dismiss="modal" aria-hidden="true">Close</button>
+	  <button class="btn" onclick="removeAnotherOrder()">Remove Another Order</button>
+	<button type="submit" class="btn btn-primary">Save changes</button>
+	  
+  </div>
+</div>
+}
+}
+
+@using(Html.BeginForm("removeOrder", "Network", FormMethod.Post, new { enctype = "multipart/form-data" }))
+{ 
+	{
+<!-- remove an Order Modal -->
+<div id="clickRemoveOrderModal" class="modal hide fade" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
+  <div class="modal-header">
+	<button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
+	<h3 id="clickRremoveOrderLabel">Remove Order</h3>
+  </div>
+  <div class="modal-body">
+	
+			<div class="control-group">
+				<label class="control-label" for="fromStationCode">From: Station Code</label>
+				<div class="controls">
+							@Html.DropDownListFor(m => Model.NewOrder.Origin.StationCode, new SelectList(Model.sCodeList, "StationCode", "StationCode"), new { required ="true", @class = "OrderFrom" })
+					<span class="text-error">@Html.ValidationMessageFor(m => Model.NewOrder.Origin.StationCode)</span>					
+				</div>
+			</div>
+
+			 <div class="control-group">		
+				<label class="control-label" for="toStationCode">To: Station Code</label>
+				<div class="controls">					
+						@Html.DropDownListFor(m => Model.NewOrder.Destination.StationCode, new SelectList(Model.sCodeList, "StationCode", "StationCode"), new { required ="true", @class = "OrderTo" })
+					<span class="text-error">@Html.ValidationMessageFor(m => Model.NewOrder.Destination.StationCode)</span>						
+				</div>
+			</div>
+		
+		<div class="control-group">
+				<label class="control-label" for="NetworkID"></label>
+				<div class="controls">
+						@Html.HiddenFor(m => Model.ID, new { placeholder = @Model.ID})
+				</div>
+			</div>
+  </div>
+
+
+  <div class="modal-footer">
+	<button type="button" class="btn" data-dismiss="modal" aria-hidden="true">Close</button>
+	  <button type="submit" class="btn">Remove Another Order</button>
+	  <button class="btn btn-primary" data-dismiss="modal" aria-hidden="true" onclick="removeAnotherOrder()">Save Changes</button>
+	
+	  
+  </div>
+</div>
+}
+}
+
+@using(Html.BeginForm("SaveNetworkAs", "Network", FormMethod.Post, new { enctype = "multipart/form-data" }))
+{ 
+	{
+<!-- save network Modal -->
+<div id="saveModal" class="modal hide fade" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
+  <div class="modal-header">
+	<button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
+	<h3 id="saveModalLabel">Save Network</h3>
+  </div>
+  <div class="modal-body">
+	<div class="control-group">				
+				<label class="control-label" for="name">Network Name</label>
+				<div class="controls">					
+						@Html.TextBoxFor(m => Model.Name, new { required ="true", placeholder = "Name" })
+					<span class="text-error">@Html.ValidationMessageFor(m => Model.Name)</span>	
+				</div>
+			</div>
+			
+			<div class="control-group">
+				<label class="control-label" for="NetworkID"></label>
+				<div class="controls">
+						@Html.HiddenFor(m => Model.ID, new { placeholder = @Model.ID})
+				</div>
+			</div>
+
+
+  </div>
+
+  <div class="modal-footer" data-ajax="false">
+	<button type="button" class="btn" data-dismiss="modal" aria-hidden="true">Close</button>
+	<button type="submit" class="btn btn-primary">Save changes</button>
+  </div>
+</div>
+}
+}
+
+
+@using(Html.BeginForm("editNetwork", "Network", FormMethod.Post, new { enctype = "multipart/form-data" , id = "editNetwork"}))
+{ 
+	{
+<!-- Edit a Network Modal -->
+<div id="editNetworkModal" class="modal hide fade" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
+  <div class="modal-header">
+	<button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
+	<h3 id="editNetworkLabel">Edit Network Information</h3>
+  </div>
+  <div class="modal-body">
+	<div class="control-group">
+				<label class="control-label" for="stationCode">Fuel Cost Per Mile</label>
+				<div class="controls">					
+						@Html.TextBoxFor(m => Model.FuelCostPerMile, new { required ="true", @class = "FuelCostPerMile" })
+					<span class="text-error">@Html.ValidationMessageFor(m => Model.FuelCostPerMile)</span>	
+					</div>
+		</div>
+	  
+	  <div class="control-group">
+			<label class="control-label" for="stationCode">Non Fuel Cost Per Mile</label>
+				<div class="controls">					
+						@Html.TextBoxFor(m => Model.NonFuelCostPerMile, new { required ="true", @class = "NonFuelCostPerMile" })
+					<span class="text-error">@Html.ValidationMessageFor(m => Model.NonFuelCostPerMile)</span>	
+					</div></div>
+				
+		  <div class="control-group">
+			<label class="control-label" for="stationCode">Max Cars Per Train</label>
+				<div class="controls">					
+						@Html.TextBoxFor(m => Model.MaxCarsPerTrain, new { required ="true", @class = "MaxCarsPerTrain" })
+					<span class="text-error">@Html.ValidationMessageFor(m => Model.MaxCarsPerTrain)</span>	
+				</div>
+			  </div>
+			
+			<div class="control-group">
+			<label class="control-label" for="stationCode">Car Cost Per Mile</label>
+				<div class="controls">					
+						@Html.TextBoxFor(m => Model.CarCostPerMile, new { required ="true", @class = "CarCostPerMile" })
+					<span class="text-error">@Html.ValidationMessageFor(m => Model.CarCostPerMile)</span>	
+				</div>
+			</div>
+			
+				
+			<div class="control-group">
+				<label class="control-label" for="NetworkID"></label>
+				<div class="controls">
+						@Html.HiddenFor(m => Model.ID, new { placeholder = @Model.ID})	
+				</div>
+			</div>
+		
+
+  </div>
+
+  <div class="modal-footer">
+	<button type="button" class="btn" data-dismiss="modal" aria-hidden="true">Close</button>
+	<button type="submit" class="btn btn-primary">Save Changes</button>
+  </div>
+</div>
+	
+}
+}
+

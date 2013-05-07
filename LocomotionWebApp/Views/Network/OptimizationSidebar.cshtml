@@ -1,0 +1,278 @@
+﻿@model LocomotionWebApp.Models.ViewModels.OptimizationSidebarViewModel
+@{
+	Layout = null;
+}
+
+@if(Model.Optimization != null)
+{ 
+	<h3>Optimization</h3>
+	if(Model.Optimization.OutOfDate)
+	{
+		<button id="sidebar-reoptimize-btn" class="btn btn-primary">Optimize</button>
+	}
+	else
+	{
+		<button id="sidebar-reoptimize-btn" class="btn btn-primary disabled">Optimize</button>
+	}
+	<br /> <br />
+	if(Model.Optimization.Optimal)
+	{
+		<strong>Optimal total cost:</strong>
+		<h4 style="margin-top:0px;">@Html.Raw(string.Format("{0:C0}", -Model.Optimization.TotalCost))</h4>
+		<strong>Optimal total revenue:</strong>
+		<h4 style="margin-top:0px;">@Html.Raw(string.Format("{0:C0}", Model.Optimization.TotalRevenue))</h4>
+		<strong>Optimal profit:</strong>
+		<h3 style="margin-top:0px;">@Html.Raw(string.Format("{0:C0}",
+			Model.Optimization.TotalRevenue - Model.Optimization.TotalCost))</h3>
+	}
+	else
+	{ 
+		<p class="text-error"><strong>
+			@Html.Raw(Model.Optimization.UnoptimalMessage)
+		</strong></p>
+	}
+	
+	<div class="tabbable optimization-tabbable">
+		<ul class="nav nav-tabs">
+			<li class="@Html.Raw(Model.StartTab == 1 ? "active" : "")">
+				<a href="#opttab1" data-toggle="tab">Network Risk</a></li>
+			<li class="@Html.Raw(Model.StartTab == 2 ? "active" : "")">
+				<a href="#opttab2" data-toggle="tab">Suggestions</a></li>
+		</ul>
+		<div class="tab-content">
+			<div class="tab-pane @Html.Raw(Model.StartTab == 1 ? "active" : "")" id="opttab1">
+				<h3>Node Subscription</h3>
+				<table class="table table-condensed table-hover">
+					<thead>
+						<tr>
+							<td>Node</td>
+							<td>Subscription In</td>
+							<td>Subscription Out</td>
+						</tr>
+					</thead>
+					@foreach(var node in Model.Optimization.Nodes.OrderByDescending(
+						n => Math.Max(n.FlowInSubscription(), n.FlowOutSubscription())))
+					{ 
+						<tr>
+							<td>@Html.Raw(node.Node.StationCode)</td>
+							<td>@Html.Raw(string.Format("{0:P2}", node.FlowInSubscription()))</td>
+							<td>@Html.Raw(string.Format("{0:P2}", node.FlowOutSubscription()))</td>
+						</tr>
+					}
+				</table>
+
+				<h3>Link Subscription</h3>
+				<table class="table table-condensed table-hover">
+					<thead>
+						<tr>
+							<td>From</td>
+							<td>To</td>
+							<td>Locomotive Subscription</td>
+						</tr>
+					</thead>
+					@foreach(var link in Model.Optimization.Links.OrderByDescending(
+						l => l.TrainSubscription()))
+					{ 
+						<tr>
+							<td>@Html.Raw(link.Link.From.StationCode)</td>
+							<td>@Html.Raw(link.Link.To.StationCode)</td>
+							<td>@Html.Raw(string.Format("{0:P2}", link.TrainSubscription()))</td>
+						</tr>
+					}
+				</table>
+			</div>
+			<div class="tab-pane @Html.Raw(Model.StartTab == 2 ? "active" : "")" id="opttab2">
+			@if(Model.Optimization.SuggestionOptimal)
+			{ 
+				if(Model.Optimization.Optimal)
+				{
+				<strong>
+					Estimated savings with suggestions:
+				</strong>
+				<h3 style="margin-top:0px;">
+					@Html.Raw(string.Format("{0:C0}",
+						Model.Optimization.TotalCost - Model.Optimization.SuggestionTotalCost))
+				</h3>
+				<strong>Optimal total cost with suggestions:</strong>
+				<h4 style="margin-top:0px;">@Html.Raw(string.Format("{0:C0}", -Model.Optimization.SuggestionTotalCost))</h4>
+				<strong>Optimal total revenue with suggestions:</strong>
+				<h4 style="margin-top:0px;">@Html.Raw(string.Format("{0:C0}", Model.Optimization.SuggestionTotalRevenue))</h4>
+				<strong>Optimal profit with suggestions:</strong>
+				<h3 style="margin-top:0px;">@Html.Raw(string.Format("{0:C0}",
+					Model.Optimization.SuggestionTotalRevenue - Model.Optimization.SuggestionTotalCost))</h3>
+				}
+				else
+				{
+				<strong>Optimal total cost with suggestions:</strong>
+				<h4 style="margin-top:0px;">@Html.Raw(string.Format("{0:C0}", -Model.Optimization.SuggestionTotalCost))</h4>
+				<strong>Optimal total revenue with suggestions:</strong>
+				<h4 style="margin-top:0px;">@Html.Raw(string.Format("{0:C0}", Model.Optimization.SuggestionTotalRevenue))</h4>
+				<strong>Optimal profit with suggestions:</strong>
+				<h3 style="margin-top:0px;">@Html.Raw(string.Format("{0:C0}",
+					Model.Optimization.SuggestionTotalRevenue - Model.Optimization.SuggestionTotalCost))</h3>
+				}
+				@:Capital cost:<strong>
+					@Html.Raw(string.Format("{0:C0}", Model.Optimization.SuggestionCapitalCost))
+				@:</strong>
+				<p style="padding-top: 10px;">
+					<a href="#"
+						class="btn @Html.Raw(Model.Optimization.SuggestionCapitalCost == 0 ? "disabled" : "")"
+						id="applyAllSuggestionsBtn">Apply all suggestions</a>
+				</p>
+				<h3>Node Suggestions</h3>
+				@:Default Limitations
+				<table class="table table-condensed table-hover">
+					<thead>
+						<tr>
+							<td>Maximum Expansion</td>
+							<td>Cost Per Additional Car</td>
+						</tr>
+					</thead>
+					<tr>
+						<td>
+							<div class="input-append">
+								<input type="text" class="input-mini" id="defaultNodeExpMax"
+									value="@Html.Raw(Model.Optimization
+									.DefaultNodeExpansion.CapacityExpansionMaxPossible)">
+								<button style="display:none;" class="btn"
+									type="button"><i class="icon-ok" /></button>
+							</div>
+						</td>
+						<td>
+							<div class="input-append">
+								<input type="text" class="input-mini" id="defaultNodeExpCostPerUnit"
+									value="@Html.Raw(Model.Optimization
+									.DefaultNodeExpansion.CapacityExpansionCostPerUnit)">
+								<button style="display:none;" class="btn"
+									type="button"><i class="icon-ok" /></button>
+							</div>
+						</td>
+					</tr>
+				</table>
+				@:Suggested Node Expansions
+				<table id="nodeSuggestionTable" class="table table-condensed table-hover small-input">
+					<thead>
+						<tr>
+							<td>Station</td>
+							<td>Max Expansion</td>
+							<td>Addl Cost Per Car</td>
+							<td>Suggested Expansion</td>
+							<td></td>
+						</tr>
+					</thead>
+				</table>
+
+				<h3>Link Suggestions</h3>
+				@:Default Limitations
+				<table class="table table-condensed table-hover">
+					<thead>
+						<tr>
+							<td>Maximum Expansion</td>
+							<td>Cost Per Additional Locomotive</td>
+						</tr>
+					</thead>
+					<tr>
+						<td>
+							<div class="input-append">
+								<input type="text" class="input-mini" id="defaultLinkExpMax"
+									value="@Html.Raw(Model.Optimization
+									.DefaultLinkExpansion.CapacityExpansionMaxPossible)">
+								<button style="display:none;" class="btn"
+									type="button"><i class="icon-ok" /></button>
+							</div>
+						</td>
+						<td>
+							<div class="input-append">
+								<input type="text" class="input-mini" id="defaultLinkExpCostPerUnit"
+									value="@Html.Raw(Model.Optimization
+									.DefaultLinkExpansion.CapacityExpansionCostPerUnit)">
+								<button style="display:none;" class="btn"
+									type="button"><i class="icon-ok" /></button>
+							</div>
+						</td>
+					</tr>
+				</table>
+				<table id="linkSuggestionTable" class="table table-condensed table-hover small-input">
+					<thead>
+						<tr>
+							<td>From</td>
+							<td>To</td>
+							<td>Max Expansion</td>
+							<td>Addl Cost Per Locomotive</td>
+							<td>Suggested Expansion</td>
+							<td></td>
+						</tr>
+					</thead>
+				</table>
+			}
+			else
+			{
+				<p class="text-error"><strong>
+					@Html.Raw(Model.Optimization.SuggestionUnoptimalMessage)
+				</strong></p>
+			}
+			</div>
+		</div>
+	</div>
+
+	<script type="text/javascript">
+		$("#opttab1").closest(".tabbable").on('shown', function() {
+			layoutMapAndSidebar();
+		});
+
+		$("#sidebar-reoptimize-btn").click(function() {
+			if(!$(this).hasClass("disabled")) {
+
+				startTab = 2;
+				if($("#opttab1").hasClass("active"))
+					startTab = 1;
+
+				loadOptimization(true);
+				$("#optimize-sidebar-content")
+					.html('<div style="text-align: center;"><img src="/Content/img/ajax-loader.gif" /></div>');
+			}
+		});
+
+		loadSuggestions(
+			@Html.Action("GetSuggestionData", "Network", new { id = Model.Optimization.ID }),
+			"@Url.Action("SetExpansionData", "Network")",
+			"@Url.Action("SetDefaultExpansionData", "Network", new { id = Model.Optimization.ID })"
+			);
+
+		$(".implement-btn").click(function(e) {
+			var id = parseInt($(this).closest("tr").attr("data-id"), 10);
+
+			var node = true;
+			if($(this).closest("table").attr("id") == "linkSuggestionTable") {
+				node = false;
+			}
+
+			$.post("@Url.Action("ImplementSuggestion", new { oid = Model.Optimization.ID })",
+				{
+					id: id,
+					node: node
+				},
+				function(data) {
+					loadNetwork();
+					$("#sidebar-reoptimize-btn").removeClass("disabled");
+					$(e.target).hide();
+				}, "json");
+			showOutOfDate();
+			return false;
+		});
+		$("#applyAllSuggestionsBtn").click(function(e) {
+			if(!$(this).hasClass("disabled")) {
+				$("#optimize-sidebar-content")
+					.html('<div style="text-align: center;"><img src="/Content/img/ajax-loader.gif" /></div>');
+
+				$.post("@Url.Action("ImplementAllSuggestions", new { oid = Model.Optimization.ID })",
+					function(data) {
+						loadOptimization(true);
+					}, "json");
+			}
+			return false;
+		});
+
+		//$(".optimization-tabbable table").dataTable({});
+	</script>
+}

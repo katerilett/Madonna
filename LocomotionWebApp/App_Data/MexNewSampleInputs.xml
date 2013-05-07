@@ -1,0 +1,53 @@
+<UPInputs>
+	<Network maxCars="100" nonFuelCost="45.00" fuelCost="0.50" carCost="1.0">
+		<Nodes>
+			<Node id="SEA" latitude="47.60621" longitude="-122.332071" cars="1800"/>
+			<Node id="OAK" latitude="37.804364" longitude="-122.271114" cars="3300"/>
+			<Node id="LA" latitude="34.052234" longitude="-118.243685" cars="800"/>
+			<Node id="NOG" latitude="31.28500" longitude="-110.952987" cars="3500"/>
+			<Node id="SLC" latitude="40.760779" longitude="-111.891047" cars="1880"/>
+		</Nodes>
+		<Arcs>
+			<Arc start="SEA" end="OAK" trackMultiplier="1.00441903609" maxTrains="10" fuelAdj="1"/>
+			<Arc start="SEA" end="SLC" trackMultiplier="1.20182411653" maxTrains="2" fuelAdj="1"/>
+			<Arc start="OAK" end="SEA" trackMultiplier="1.00441903609" maxTrains="10" fuelAdj="1"/>
+			<Arc start="OAK" end="SLC" trackMultiplier="1.24214381645" maxTrains="8" fuelAdj="1"/>
+			<Arc start="OAK" end="LA" trackMultiplier="1.06751459555" maxTrains="10" fuelAdj="1"/>
+			<Arc start="LA" end="OAK" trackMultiplier="1.06751459555" maxTrains="10" fuelAdj="1"/>
+			<Arc start="LA" end="SLC" trackMultiplier="1.18734943952" maxTrains="12" fuelAdj="1"/>
+			<Arc start="LA" end="NOG" trackMultiplier="1.07564502225" maxTrains="16" fuelAdj="1"/>
+			<Arc start="NOG" end="LA" trackMultiplier="1.07564502225" maxTrains="16" fuelAdj="1"/>
+			<Arc start="NOG" end="SLC" trackMultiplier="1.18233212248" maxTrains="10" fuelAdj="1"/>
+			<Arc start="SLC" end="SEA" trackMultiplier="1.20182411653" maxTrains="2" fuelAdj="1"/>
+			<Arc start="SLC" end="OAK" trackMultiplier="1.24214381645" maxTrains="8" fuelAdj="1"/>
+			<Arc start="SLC" end="LA" trackMultiplier="1.18734943952" maxTrains="12" fuelAdj="1"/>
+			<Arc start="SLC" end="NOG" trackMultiplier="1.18233212248" maxTrains="10" fuelAdj="1"/>
+		</Arcs>
+	</Network>
+	<Orders>
+		<!-- SEA orders -->
+		<Order from="SEA" to="OAK" revenue="3405" cars="110"/>
+		<Order from="SEA" to="LA" revenue="5240" cars="110"/>
+		<Order from="SEA" to="NOG" revenue="7740" cars="125"/>
+		<Order from="SEA" to="SLC" revenue="4210" cars="105"/>
+
+		<!-- OAK orders -->
+		<Order from="OAK" to="SEA" revenue="3405" cars="105"/>
+		<Order from="OAK" to="LA" revenue="1468" cars="40"/>
+		<Order from="OAK" to="NOG" revenue="3468" cars="105"/>
+		<Order from="OAK" to="SLC" revenue="2940" cars="340"/>		
+		
+		<!-- LA orders -->
+
+		<!-- NOG orders -->
+		<Order from="NOG" to="SEA" revenue="7740" cars="202"/>
+		<Order from="NOG" to="OAK" revenue="700" cars="298"/>
+		<Order from="NOG" to="LA" revenue="2250" cars="203"/>
+		<Order from="NOG" to="SLC" revenue="2319" cars="302"/>	
+		
+		<!-- SLC orders -->
+		<Order from="SLC" to="SEA" revenue="4210" cars="90"/>
+		<Order from="SLC" to="OAK" revenue="2940" cars="190"/>
+		<Order from="SLC" to="LA" revenue="3100" cars="110"/>
+	</Orders>		
+</UPInputs>

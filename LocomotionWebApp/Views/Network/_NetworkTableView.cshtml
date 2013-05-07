@@ -1,0 +1,70 @@
+﻿@model LocomotionWebApp.Models.ViewModels.NetworkListViewModel
+@{
+	Layout = null;
+}
+
+@if(Model.Networks.Count > 0)
+{ 
+	<thead>
+		<tr>
+			<td>Network Name</td>
+			<td>Author</td>
+			<td>Last Edited</td>
+			<td>Revision</td>
+			<td></td>
+		</tr>
+	</thead>
+	foreach(var network in Model.Networks)
+	{ 
+		<tr>
+			<td>@Html.DisplayFor(net => network.Name)</td>
+			<td>@Html.DisplayFor(net => network.Author.RealName)</td>
+			<td>@Html.DisplayFor(net => network.LastEdit)</td>
+
+			@if(network.Revision != 0)
+			{
+				<td><a href="#" onclick="popupModalUrl('@Html.Raw(network.Name) History',
+					'@Url.Action("NetworkHistory", "Network", new { id = network.ID })' )" class="">
+					@Html.DisplayFor(net => network.Revision) Previous Versions
+				</a></td>
+			}
+			else
+			{ 
+				<td> @Html.DisplayFor(net => network.Revision) Previous Versions </td>
+			}
+
+			<td style="text-align: right;">
+				<a href="@Url.Action("TempEdit", "Network", new { id = network.ID, clickTab = 0 })"
+					class="btn btn-small btn-primary">View </a>
+				@if (Html.Action("Access", "Account").ToString().Equals("Administrator") == true || Html.Action("Access", "Account").ToString().Equals("Operations") == true)
+				{
+					<a href="@Url.Action("TempEdit", "Network", new { id = network.ID, clickTab = 1 })"
+						class="btn btn-small">Edit </a>
+				}
+				<a href="@Url.Action("TempEdit", "Network", new { id = network.ID, clickTab = 2 })"
+					class="btn btn-small">Report </a>
+				@if (Html.Action("Access", "Account").ToString().Equals("Administrator") == true
+					|| Html.Action("Access", "Account").ToString().Equals("Operations") == true)
+				{
+				<a href="@Url.Action("Delete", "Network", new { id = network.ID })"
+					class="btn btn-small btn-danger delete-net-btn"><i class="icon-trash"></i> </a>
+				}
+			</td>
+		</tr>
+	}
+
+	<script type="text/javascript">
+		$(".delete-net-btn").click(function(e) {
+			console.log("CLICKC");
+			var netName = $(e.target).closest("tr").find("td").first().text();
+			if(confirm('Are you sure you wish to delete ' + netName + '?')) {
+				return true;
+			}
+			e.preventDefault();
+		});
+	</script>
+}
+else
+{
+	<td>No networks exist.</td>
+}

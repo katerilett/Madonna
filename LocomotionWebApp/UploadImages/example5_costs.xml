@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<costs>
+	<maxCarsPerTrain>80</maxCarsPerTrain> 
+	<nonFuelCostPerMile>45.00</nonFuelCostPerMile> 
+	<fuelCostPerMile>5.00</fuelCostPerMile> 
+	<carCostPerMile>5.00</carCostPerMile>
+</costs>

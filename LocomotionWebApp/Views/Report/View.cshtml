@@ -1,0 +1,435 @@
+﻿@model LocomotionWebApp.Models.ViewModels.ReportViewModel
+@{
+	Layout = null;
+}
+
+@if(Model.Report.OptimizedReport == null)
+{ 
+	<p>
+		This network has not been optimized, so some information is not available.
+		<br />
+		<a href="#" id="generate-optimization-report" class="btn btn-primary"
+			style="margin-top: 8px; margin-bottom: 8px;">Optimize and view report</a>
+	</p>
+}
+<div class="accordion" id="report-accordion">
+	<div class="accordion-group">
+		<div class="accordion-heading">
+			<a class="accordion-toggle" data-toggle="collapse" href="#collapseZero">
+				<strong>Network Infrastructure Costs</strong>
+			</a>
+		</div>
+		<div id="collapseZero" class="accordion-body collapse in">
+			<div class="accordion-inner">
+				<table style="text-align: right; border-collapse: separate; border-spacing: 5px;">
+					<tr>
+						<td> <strong>Fuel cost per mile: </strong> </td>
+						<td>
+							@Html.Raw(string.Format("{0:C} per mile", Model.Report.ReportedNetwork.FuelCostPerMile))
+						</td>
+					</tr>
+					<tr>
+						<td> <strong>Non-Fuel cost per mile: </strong> </td>
+						<td>
+							@Html.Raw(string.Format("{0:C} per mile", Model.Report.ReportedNetwork.NonFuelCostPerMile))
+						</td>
+					</tr>
+					<tr>
+						<td> <strong>Car cost per mile: </strong> </td>
+						<td>
+							@Html.Raw(string.Format("{0:C} per mile", Model.Report.ReportedNetwork.CarCostPerMile))
+						</td>
+					</tr>
+					<tr>
+						<td> <strong>Maximum cars per train: </strong> </td>
+						<td style="text-align: left;">
+							@Html.Raw(Model.Report.ReportedNetwork.MaxCarsPerTrain)
+						</td>
+					</tr>
+				</table>
+			</div>
+		</div>
+	</div>
+	<div class="accordion-group">
+		<div class="accordion-heading">
+			<a class="accordion-toggle" data-toggle="collapse" href="#collapseOne">
+				<strong>Nodes</strong>
+			</a>
+		</div>
+		<div id="collapseOne" class="accordion-body collapse out">
+			<div class="accordion-inner">
+				<div style="text-align:right;">
+					<button type="button" class="btn btn-primary clear-graph-btn">Close Chart</button>
+				</div>
+				<div class="chart-loc"></div>
+				<table class="data-table" id="node-data-table">
+					<thead>
+						<tr>
+							<td>Station Code</td>
+							<td class="right-header" data-type="cars">Capacity (cars)</td>
+							<td class="right-header" data-type="cars">Flow In (cars)</td>
+							<td class="right-header" data-type="cars">Flow Out (cars)</td>
+							<td class="right-header" data-type="percent">Flow In (% capacity)</td>
+							<td class="right-header" data-type="percent">Flow Out (% capacity)</td>
+						</tr>
+					</thead>
+					@foreach(var node in
+						Model.Report.OptimizedReport == null
+							// If not optimized, create a fake optimized node that stores the node.
+							// This is so the same type can be used for both optimized and unoptimized.
+							? Model.Report.ReportedNetwork.Nodes.Select(n => new DataModel.Class.NodeOptimized()
+								{ Node = n })
+							// If there is an optimization, use the catual nodes.
+							: Model.Report.OptimizedReport.RawOptimization.Nodes)
+					{ 
+						<tr>
+							<td> @Html.Raw(node.Node.StationCode) </td>
+							<td class="right-align"> @Html.Raw(node.Node.CarCapacity) </td>
+							@if(Model.Report.OptimizedReport == null)
+							{
+								<td class="right-align n-a">N/A</td>
+								<td class="right-align n-a">N/A</td>
+								<td class="right-align n-a">N/A</td>
+								<td class="right-align n-a">N/A</td>
+							}
+							else
+							{
+								<td class="right-align"> @Html.Raw(node.FlowIn) </td>
+								<td class="right-align"> @Html.Raw(node.FlowOut) </td>
+								<td class="right-align"> @Html.Raw(string.Format("{0:N1}%", node.FlowInSubscription()*100)) </td>
+								<td class="right-align"> @Html.Raw(string.Format("{0:N1}%", node.FlowOutSubscription()*100)) </td>
+							}
+						</tr>
+					}
+				</table>
+			</div>
+		</div>
+	</div>
+	<div class="accordion-group">
+		<div class="accordion-heading">
+			<a class="accordion-toggle" data-toggle="collapse" href="#collapseTwo">
+				<strong>Links</strong>
+			</a>
+		</div>
+		<div id="collapseTwo" class="accordion-body collapse out">
+			<div class="accordion-inner">
+				<div style="text-align:right;">
+					<button type="button" class="btn btn-primary clear-graph-btn">Close Chart</button>
+				</div>
+				<div class="chart-loc"></div>
+				<table class="data-table" id="link-data-table">
+					<thead>
+						<tr>
+							<td class="left-header">From</td>
+							<td class="left-header">To</td>
+							<td class="right-header" data-type="miles">Distance (miles)</td>
+							<td class="right-header" data-type="locomotives">Locomotive Capacity</td>
+
+							<td class="right-header" data-type="locomotives">Active Locomotives</td>
+							<td class="right-header" data-type="percent">Locomotive Capacity (% capacity)</td>
+							<td class="right-header" data-type="cars">Flow (cars)</td>
+							<td class="right-header" data-type="USD">Total Travel Cost (USD)</td>
+							<td class="right-header" data-type="USD">Locomotive Cost (USD)</td>
+							<td class="right-header" data-type="USD">Car Cost (USD)</td>
+						</tr>
+					</thead>
+					@foreach(var link in
+						Model.Report.OptimizedReport == null
+							? Model.Report.ReportedNetwork.Links.Select(l => new DataModel.Class.LinkOptimized()
+								{ Link = l })
+							: Model.Report.OptimizedReport.RawOptimization.Links)
+					{ 
+						<tr>
+							<td> @Html.Raw(link.Link.From.StationCode) </td>
+							<td> @Html.Raw(link.Link.To.StationCode) </td>
+							<td class="right-align"> @Html.Raw(string.Format("{0:N2}", link.Link.Distance)) </td>
+							<td class="right-align"> @Html.Raw(link.Link.MaxTrains) </td>
+							@if(Model.Report.OptimizedReport == null)
+							{
+								<td class="right-align n-a">N/A</td>
+								<td class="right-align n-a">N/A</td>
+								<td class="right-align n-a">N/A</td>
+								<td class="right-align n-a">N/A</td>
+								<td class="right-align n-a">N/A</td>
+								<td class="right-align n-a">N/A</td>
+							}
+							else
+							{
+								var linkCost = Model.Report.OptimizedReport.LinkCosts[link.Link];
+								<td class="right-align"> @Html.Raw(link.CurrentTrains) </td>
+								<td class="right-align"> @Html.Raw(string.Format("{0:N1}%", link.TrainSubscription()*100)) </td>
+								<td class="right-align"> @Html.Raw(link.Flow) </td>
+								<td class="right-align">
+									@Html.Raw(string.Format("{0:C}",
+										linkCost.LocomotiveCost + linkCost.CarFlowCost
+									))
+								</td>
+								<td class="right-align"> @Html.Raw(string.Format("{0:C}", linkCost.LocomotiveCost)) </td>
+								<td class="right-align"> @Html.Raw(string.Format("{0:C}", linkCost.CarFlowCost)) </td>
+							}
+						</tr>
+					}
+				</table>
+			</div>
+		</div>
+	</div>
+	<div class="accordion-group">
+		<div class="accordion-heading">
+			<a class="accordion-toggle" data-toggle="collapse" href="#collapseThree">
+				<strong>Orders</strong>
+			</a>
+		</div>
+		<div id="collapseThree" class="accordion-body collapse out">
+			<div class="accordion-inner">
+				<div style="text-align:right;">
+					<button type="button" class="btn btn-primary clear-graph-btn">Close Chart</button>
+				</div>
+				<div class="chart-loc"></div>
+				<table class="data-table" id="order-data-table">
+					<thead>
+						<tr>
+							<td class="left-header">From</td>
+							<td class="left-header">To</td>
+							<td class="right-header" data-type="USD">Revenue (USD)</td>
+							<td class="right-header" data-type="cars">Number of Cars (cars)</td>
+						</tr>
+					</thead>
+					@foreach(var order in Model.Report.ReportedNetwork.Orders)
+					{ 
+						<tr>
+							<td> @Html.Raw(order.Origin.StationCode) </td>
+							<td> @Html.Raw(order.Destination.StationCode) </td>
+							<td class="right-align"> @Html.Raw(string.Format("{0:C}", order.Revenue)) </td>
+							<td class="right-align"> @Html.Raw(string.Format("{0}", order.Cars)) </td>
+						</tr>
+					}
+				</table>
+			</div>
+		</div>
+	</div>
+</div>
+
+<script type="text/javascript">
+$("#generate-optimization-report").click(function() {
+	$("#report-pullover .modal-body")
+		.html('<div style="text-align: center;"><img src="/Content/img/ajax-loader.gif" /></div>');
+	$("#report-pullover .modal-body")
+		.load("@Url.Action("View", "Report", new { id=Model.ID, createIfNotFound=true})",
+			function() { loadOptimization(); } );
+});
+
+// Preprocess from tables into displayable form.
+function graphTable(tableID, linkForm) {
+	series = [];
+	var itemNames = [];
+	var sourceTable = $("#" + tableID);
+
+	if(linkForm == undefined)
+		linkForm = false;
+
+	// Column (series) names
+	var columnTDs = sourceTable.find("thead td");
+	columnTDs.each(function(i) {
+		var columnName = $(columnTDs[i]).text();
+
+		var columnData = [];
+		var columns = 0;
+
+		var rawColumnData = (sourceTable.find("tbody td:nth-child("+(i+1)+")"));
+		var columnApplicable = true;
+
+		var axis = 0;
+
+		var checked = $(columnTDs[i]).find('input');
+		if(checked.size() > 0 && checked[0].checked == false) {
+			columnApplicable = false;
+		}
+
+		if(columnApplicable) {
+			rawColumnData.each(function(j) {
+				var raw = $(rawColumnData[j]).text();
+				var ufn = parseFloat(unformatNumber(raw));
+
+
+				if(!isNaN(ufn)) {
+					columnData[j] = ufn;
+					if(raw.indexOf("$") != -1)
+						axis = 1;
+					else if(raw.indexOf("%") != -1)
+						axis = 2;
+				} else {
+					columnApplicable = false;
+					if(i == 0) {
+						itemNames.push(raw);
+					} else if(i == 1 && linkForm) {
+						itemNames[j] = itemNames[j] + " → " + raw;
+					}
+				}
+			});
+		}
+
+		if(columnApplicable) {
+			series.push({
+				name: columnName,
+				id: columnName,
+				data: columnData,
+			});
+		}
+	});
+
+	var chartDiv = sourceTable.closest(".accordion-inner").find(".chart-loc");
+	var chartBtn = sourceTable.closest(".accordion-inner").find(".clear-graph-btn");
+	if(series.length == 0) {
+		chartDiv.slideUp();
+		chartBtn.slideUp();
+	} else {
+		var chart = graphDict[tableID];
+		for(var i in series) {
+			series[i].exists = false;
+		}
+		// Get rid of everything that isn't supposed to be there.
+		for(var i = chart.series.length - 1; i >= 0; i--) {
+			var belongs = false;
+			for(var j in series) {
+				if(chart.series[i].options.id == series[j].id) {
+					belongs = true;
+					series[j].exists = true;
+					chart.series[i].setData(series[j].data);
+				}
+			}
+			if(!belongs)
+				chart.series[i].remove();
+		}
+		// Add everything back that isn't already in there.
+		for(var i in series) {
+			if(series[i].exists == false)
+				chart.addSeries(series[i], true);
+		}
+		// Show the correct names on the axis.
+		chart.xAxis[0].setCategories(itemNames);
+		// Show the chart.
+		chartDiv.slideDown();
+		chartBtn.slideDown();
+	}
+}
+
+$(".data-table .right-header").append(
+	'<input type="checkbox" style="float:right;" class="graph-this-checkbox" title="Graph this column">'
+);
+
+$(".graph-this-checkbox").click(function(e) {
+	e.stopPropagation();
+
+	var boxes = $(e.target).closest("table").find(".graph-this-checkbox");
+	var curType = $(e.target).closest("td").attr("data-type");
+
+	// Check checked state of all other checkboxes of this type.
+	var allUnchecked = true;
+	var allSameType = $('td[data-type="'+curType+'"] .graph-this-checkbox');
+	allSameType.each(function(i) {
+		if(allSameType[i].checked)
+			allUnchecked = false;
+	});
+
+	boxes.each(function(i) {
+		var type = $(boxes[i]).closest("td").attr("data-type");
+		if(curType != type) {
+			if(allUnchecked) {
+				$(boxes[i]).removeAttr("disabled");
+			} else {
+				$(boxes[i]).attr("disabled", "disabled");
+			}
+		}
+	});
+
+	graphTable($(e.target).closest("table").attr("id"), true);
+});
+
+$("thead").click(function(e) {
+	graphTable($(e.target).closest("table").attr("id"), true);
+});
+
+
+function addKeyColors(base) {
+	$(base).find(".data-table td").each(function(i) {
+		var td = $($(".data-table td")[i]);
+		if(td.find(".color-box").size() > 0)
+			return;
+		var text = td.text();
+		if(text.indexOf("%") != -1) {
+			var percent = parseFloat(unformatNumber(text)) / 100.0;
+			if(!isNaN(percent)) {
+				var col;
+				if (percent >= 1.0) {
+					col = "#ff6029";
+				} else if (percent <= 0.0) {
+					col = "#444444";
+				} else {
+					col = "#" + colorRGBLerp(0x2f43ff, 0xff0000, percent);
+				}
+				td.append('<div class="color-box" style="background-color:' + col + ';"></div>');
+			}
+		}
+	});
+};
+addKeyColors(document);
+
+$(".data-table").dataTable({
+});
+
+
+$(".dataTables_length select").change(function(e) {
+	graphTable($(e.target).closest(".accordion-inner").find("table").attr("id"), true);
+});
+
+
+//graphTable("node-data-table", true);
+//graphTable("link-data-table", true);
+//graphTable("order-data-table", true);
+initChart("node-data-table", "Node");
+initChart("link-data-table", "Link");
+initChart("order-data-table", "Order");
+var graphDict = {
+	"node-data-table": Highcharts.charts[0],
+	"link-data-table": Highcharts.charts[1],
+	"order-data-table": Highcharts.charts[2],
+};
+
+$(".data-table").closest(".accordion-inner").keyup(function(e) {
+	setTimeout(function() {
+			graphTable($(e.target).closest(".accordion-inner").find("table").attr("id"), true);
+		}, 1);
+});
+
+function initChart(tableID, titlePre) {
+	chartFor(tableID).highcharts({
+		chart: {
+			type: "column"
+		},
+		yAxis: [{
+			allowDecimals: false,
+			title: { text: "" }
+		}],
+		xAxis: {
+			title: { text: null }
+		},
+		title: {
+			text: titlePre + " Information"
+		},
+	}).hide();
+}
+
+function chartFor(tableID) {
+	return $("#"+tableID).closest(".accordion-inner").find(".chart-loc");
+}
+
+$(".clear-graph-btn").click(function(e) {
+	var boxes = $(e.target).closest(".accordion-inner").find("table .graph-this-checkbox");
+	boxes.removeAttr("disabled");
+	boxes.each(function(i) {
+		boxes[i].checked = false;
+	});
+	graphTable($(e.target).closest(".accordion-inner").find("table").attr("id"), true);
+}).hide();
+
+</script>

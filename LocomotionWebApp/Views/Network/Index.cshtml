@@ -1,0 +1,276 @@
+﻿@model LocomotionWebApp.Models.ViewModels.NetworkListViewModel
+
+
+@{
+}
+
+@section Title
+{
+	Networks
+}
+
+@section Scripts{
+	
+
+	@if(ViewBag.UploadAlert != null)
+	{
+	<script type="text/javascript">
+		//var isFormValid = ;
+		$(function() {
+			$('#addNetwork').modal('show');
+		});
+	</script>
+	}
+
+	@if(ViewBag.UrlUploadAlert != null)
+	{
+	<script type="text/javascript">
+		//var isFormValid = ;
+		$(function() {
+			$('#addNetworkUrl').modal('show');
+		});
+	</script>
+	}
+
+	<script type="text/javascript">
+		$(function() {
+			$("#createNetBtn").add("#createNetUrlBtn")
+				.click(function(e)
+				{
+					$(this).closest(".modal-footer").find(".spinner").show();
+					$(this).parent().find("button").addClass("disabled");
+					$(this).attr("type", "button");
+					$(this).unbind("click");
+					$(this).closest("form").submit();
+				}
+			);
+		});
+	</script>
+
+	<script type="text/javascript">
+		$(function() {
+			if($(".network-data-table thead").size() > 0)
+			$(".network-data-table").dataTable({
+				"sDom": "<'row'<'span6'l><'span6'f>r>t<'row'<'span6'i><'span6'p>>",
+				"aoColumns": [
+					null,
+					null,
+					null,
+					null,
+					{ "asSorting": [] }
+				]
+			});
+		});
+	</script>
+}
+
+<div class="container">
+	<div class="row">
+		<div class="span12">
+			<br />
+			@if(ViewBag.Alert != null)
+			{ 
+			<div class="alert @Html.Raw(ViewBag.AlertClass != null ? ViewBag.AlertClass : "")">
+				<button type="button" class="close" data-dismiss="alert">&times;</button>
+				<strong>@Html.Raw(ViewBag.Alert)</strong>
+
+				@if(ViewBag.NewNetworkID != null)
+				{ 
+					<a href="@Url.Action("TempEdit", "Network", new { id = ViewBag.NewNetworkID, clickTab = 0 })"
+						class="btn btn-small btn-primary">View</a>
+				}
+			</div>
+			}
+		</div>
+	</div>
+	<div class="row">
+		<div class="span12">
+			<h2 style="margin-bottom: 25px;">Networks
+			<a class="btn btn-primary btn-small"
+				href="#addNetworkBlank" data-toggle="modal" style="margin-top: 20px; float:right;">
+				<i class="icon-plus-sign"></i>
+				Add Blank Network
+			</a> 
+			<a class="btn btn-primary btn-small"
+				href="#addNetwork" data-toggle="modal"
+				style="margin-top: 20px; float:right; margin-right: 5px;">
+				<i class="icon-plus-sign"></i>
+				Add Network From File
+				<i class="icon-file"></i>
+			</a> 
+			<a class="btn btn-primary btn-small"
+				href="#addNetworkUrl" data-toggle="modal"
+				style="margin-top: 20px; float:right; margin-right: 5px;">
+				<i class="icon-plus-sign"></i>
+				Add Network From URL
+				<i class="icon-globe"></i>
+			</a>
+			</h2>
+
+			<table class="network-data-table">
+			@Html.Partial("_NetworkTableView", Model)
+			</table>
+		</div>
+	</div>
+	<div class="row" style="font-size: 9px; color: #999; text-align: center;">
+		<div class="span12"></div>
+			<br />
+			The Locomotion Network Solver is a student project; Locomotion, Inc. takes no liability for use of this software
+			| <a href="email:davis.goodin@gmail.com">Contact Us</a>
+			| © 2013 Locomotion, Inc.
+		</div>
+	</div>
+</div>
+
+@using(Html.BeginForm("CreateBlank", "Network", FormMethod.Post, new {
+	enctype = "multipart/form-data", @class = "form-horizontal"
+}))
+{ 
+	<div id="addNetworkBlank"
+		class="modal hide @Html.Raw(ViewBag.UploadAlert == null ? "fade" : "")"
+		tabindex="-1" role="dialog"
+		aria-labelledby="newNetworkLabel" aria-hidden="true" >
+		<div class="modal-header">
+			<button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
+			<h3 id="newBlankNetworkLabel">Add Blank Network</h3>
+		</div>
+		<form class="form-horizontal" method="post" enctype="multipart/form-data">
+			<div class="modal-body">
+
+				<div class="control-group">
+					<label class="control-label" for="BlankNetworkName">
+						Network Name
+						<a href="#" rel="tooltip" title="Tootlsef"><i class="icon-question-sign"></i></a>
+					</label>
+					<div class="controls">
+						<input type="text" id="BlankNetworkName" name="NetworkName"
+							placeholder="New network name" required />
+					</div>
+				</div>
+			</div>
+
+			@if(ViewBag.UploadAlert != null)
+			{ 
+				<div class="alert fade in">
+					<button type="button" class="close" data-dismiss="alert">x</button>
+					@Html.Raw(ViewBag.UploadAlert)
+				</div>
+			}
+			<div class="modal-footer">
+				<span class="spinner" style="display: none;"><img src="/Content/img/ajax-loader.gif" /></span>
+				<button class="btn" data-dismiss="modal" aria-hidden="true">Close</button>
+				<button type="submit" id="createBlankNetBtn" class="btn btn-primary">Create Network</button>
+			</div>
+		</form>
+	</div>
+}
+
+@using(Html.BeginForm("Upload", "Network", FormMethod.Post, new {
+	enctype = "multipart/form-data", @class = "form-horizontal"
+}))
+{ 
+	<div id="addNetwork"
+		class="modal hide @Html.Raw(ViewBag.UploadAlert == null ? "fade" : "")"
+		tabindex="-1" role="dialog"
+		aria-labelledby="newNetworkLabel" aria-hidden="true" >
+		<div class="modal-header">
+			<button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
+			<h3 id="newNetworkLabel">Add Network From File</h3>
+		</div>
+		<form class="form-horizontal" method="post" enctype="multipart/form-data">
+			<div class="modal-body">
+
+				<div class="control-group">
+					<label class="control-label" for="NetworkName">
+						Network Name
+						<a href="#" rel="tooltip" title="Tootlsef"><i class="icon-question-sign"></i></a>
+					</label>
+					<div class="controls">
+						<input type="text" id="NetworkName" name="NetworkName"
+							placeholder="New network name" required />
+					</div>
+				</div>
+
+				<div class="control-group">
+					<label class="control-label" for="NetworkFile">
+						<b>Network File</b>
+					</label>
+					<div class="controls">
+						<input type="file" id="NetworkFile" name="NetworkFile" /><br />
+					</div>
+				</div>
+				
+
+			</div>
+
+			@if(ViewBag.UploadAlert != null)
+			{ 
+				<div class="alert fade in">
+					<button type="button" class="close" data-dismiss="alert">x</button>
+					@Html.Raw(ViewBag.UploadAlert)
+				</div>
+			}
+			<div class="modal-footer">
+				<span class="spinner" style="display: none;"><img src="/Content/img/ajax-loader.gif" /></span>
+				<button class="btn" data-dismiss="modal" aria-hidden="true">Close</button>
+				<button type="submit" id="createNetBtn" class="btn btn-primary">Create Network</button>
+			</div>
+		</form>
+	</div>
+}
+
+@using(Html.BeginForm("UploadUrl", "Network", FormMethod.Post, new {
+	enctype = "multipart/form-data", @class = "form-horizontal"
+}))
+{ 
+	<div id="addNetworkUrl"
+		class="modal hide @Html.Raw(ViewBag.UrlUploadAlert == null ? "fade" : "")"
+		tabindex="-1" role="dialog"
+		aria-labelledby="newNetworkLabel" aria-hidden="true" >
+		<div class="modal-header">
+			<button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
+			<h3 id="newNetworkUrlLabel">Add Network From URL</h3>
+		</div>
+		<form class="form-horizontal" method="post" enctype="multipart/form-data">
+			<div class="modal-body">
+
+				<div class="control-group">
+					<label class="control-label" for="NetworkName">
+						Network Name
+						<a href="#" rel="tooltip" title="Tootlsef"><i class="icon-question-sign"></i></a>
+					</label>
+					<div class="controls">
+						<input type="text" id="NetworkNameUrl" name="NetworkName"
+							placeholder="New network name" required />
+					</div>
+				</div>
+
+				<div class="control-group">
+					<label class="control-label" for="NetworkFile">
+						<b>Network File URL</b>
+					</label>
+					<div class="controls">
+						<input type="text" id="NetworkUrl" name="NetworkUrl"
+							placeholder="Network source URL" required />
+					</div>
+				</div>
+				
+
+			</div>
+
+			@if(ViewBag.UrlUploadAlert != null)
+			{ 
+				<div class="alert fade in">
+					<button type="button" class="close" data-dismiss="alert">x</button>
+					@Html.Raw(ViewBag.UrlUploadAlert)
+				</div>
+			}
+			<div class="modal-footer">
+				<span class="spinner" style="display: none;"><img src="/Content/img/ajax-loader.gif" /></span>
+				<button class="btn" data-dismiss="modal" aria-hidden="true">Close</button>
+				<button type="submit" id="createNetUrlBtn" class="btn btn-primary">Create Network</button>
+			</div>
+		</form>
+	</div>
+}
+

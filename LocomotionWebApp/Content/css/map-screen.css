@@ -1,0 +1,106 @@
+﻿body
+{
+	background-color: #e7e7e7;
+
+	padding: 0px;
+}
+
+#header
+{
+	position: fixed;
+	top: 0px;
+
+	margin: 0px auto;
+}
+
+#map_canvas
+{
+	position: fixed;
+}
+
+#sidebararea
+{
+	position: fixed;
+
+	width: 0px;
+	font-size: 12px;
+
+	overflow-y: auto;
+	overflow-x: auto;
+
+	background-color: #454545;
+
+	/* Under the header bar. */
+	z-index: -1;
+	cursor: ew-resize;
+}
+
+#sidebararea-int
+{
+	height: 100%;
+
+	background-color: #fff;
+
+	margin-left: 5px;
+	padding-left: 10px;
+
+	overflow-y: auto;
+
+	cursor: auto;
+}
+#sidebararea .end
+{
+	width: 100%;
+}
+.end.top
+{
+	height: 15px;
+}
+.end.bottom
+{
+}
+
+#sidebar-contents
+{
+	overflow-x: hidden;
+	display: none;}
+#sidebar-contents > div
+{
+	cursor: auto;
+}
+#sidebar-contents .well
+{
+	margin-bottom: 0px;
+}
+
+.show-optimized,.show-unoptimized
+{
+	display: none;
+}
+
+.sidebar-box
+{
+	padding: 8px;
+}
+.sidebar-box:nth-child(2)
+{
+	/* Make it so that the first box is reasonably high on the page. */
+	margin-top: -16px;
+}
+
+table.small-input .input-append
+{
+	margin: 0px;
+}
+table.small-input input
+{
+	padding: 1px;
+}
+table.small-input button
+{
+	padding: 1px 2px;
+}
+.small-btn
+{
+	padding: 1px;
+}

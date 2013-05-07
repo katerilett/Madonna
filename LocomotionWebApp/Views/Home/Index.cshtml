@@ -1,0 +1,83 @@
+﻿@model LocomotionWebApp.Models.ViewModels.HomeViewModel
+@{
+}
+
+@section Title
+{
+	Home
+}
+
+@section Scripts
+{
+	<script type="text/javascript">
+		$(function() {
+			if($(".network-data-table thead").size() > 0)
+			$(".network-data-table").dataTable({
+				"sDom": "<'row'r>t<'row'<'span6'i><'span6'p>>",
+				"aaSorting": [[ 2, "desc" ]],
+				"iDisplayLength": 5,
+				"aoColumns": [
+					null,
+					null,
+					null,
+					null,
+					{"asSorting": [] }
+					]
+			});
+			else
+				$(".network-data-table").empty().html('You have not edited any networks. Go to '
+					+ '<a href="@Url.Action("Index", "Network")">Networks</a> to upload, create,'
+					+ ' or edit networks.');
+			$('#myCarousel').carousel({
+				interval: 7200
+			});
+		});
+	</script>
+}
+
+@section Header
+{
+}
+
+<div class="container">
+	<div class="row">
+		<div class="span12">
+			<h2>Locomotion Network Solver</h2>
+			<div id="myCarousel" class="carousel slide" style="width:75%; margin: 0 auto;">
+			  <ol class="carousel-indicators">
+				<li data-target="#myCarousel" data-slide-to="0" class="active"></li>
+				<li data-target="#myCarousel" data-slide-to="1"></li>
+				<li data-target="#myCarousel" data-slide-to="2"></li>
+				<li data-target="#myCarousel" data-slide-to="3"></li>
+			  </ol>
+			  <!-- Carousel items -->
+			  <div class="carousel-inner">
+				<div class="active item"><img src="~/Content/img/UP-2436-VBA-3-11-10.jpg"/></div>
+				<div class="item"><img src="~/Content/img/up-248-kc-ks-1-14-90.jpg"/></div>
+				<div class="item"><img src="~/Content/img/Union-Pacific-Railroad.jpg"/></div>
+				<div class="item"><img src="~/Content/img/homepage_pic.jpg"/></div>
+			  </div>
+			  <!-- Carousel nav -->
+			  <a class="carousel-control left" href="#myCarousel" data-slide="prev">&lsaquo;</a>
+			  <a class="carousel-control right" href="#myCarousel" data-slide="next">&rsaquo;</a>
+			</div>
+			&nbsp;
+			<p>Welcome! You are on the Home page. Locate all of the networks under Network tab or select one of your recently accessed networks below to get started.</p>
+			<h3>Recent Networks</h3>
+
+			<table class="network-data-table">
+			@Html.Partial("~/Views/Network/_NetworkTableView.cshtml",
+				new LocomotionWebApp.Models.ViewModels.NetworkListViewModel() { Networks = Model.Networks }
+			)
+			</table>
+		</div>
+	</div>
+	<div class="row" style="font-size: 9px; color: #999; text-align: center;">
+		<div class="span12"></div>
+			<br />
+			The Locomotion Network Solver is a student project; Locomotion, Inc. takes no liability for use of this software
+			| <a href="email:davis.goodin@gmail.com">Contact Us</a>
+			| © 2013 Locomotion, Inc.
+		</div>
+	</div>
+</div>

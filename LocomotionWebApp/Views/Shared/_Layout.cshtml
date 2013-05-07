@@ -1,0 +1,98 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta name="viewport" content="width=device-width" />
+	<title>@RenderSection("Title", false) - Locomotion</title>
+
+	<link rel="stylesheet" type="text/css" href="@Url.Content("~/Content/css/bootstrap.min.css")" />
+	<link rel="stylesheet" type="text/css" href="@Url.Content("~/Content/css/up-theme/jquery-ui-1.10.0.custom.min.css")" />
+	<link rel="stylesheet" type="text/css" href="@Url.Content("~/Content/css/main.css")" />
+	<link rel="stylesheet" type="text/css" href="@Url.Content("~/Content/css/jquery.dataTables.css")" />
+
+	<link rel="shortcut icon" href="~/Content/img/UP_logo.ico" />
+
+	<script type="text/javascript" src="@Url.Content("~/Content/js/jquery-1.9.0.js")"></script>
+	<script type="text/javascript" src="@Url.Content("~/Content/js/jquery-ui-1.10.0.custom.min.js")"></script>
+	<script type="text/javascript" src="@Url.Content("~/Content/js/bootstrap.min.js")"></script>
+	<script type="text/javascript" src="@Url.Content("~/Content/js/jquery.dataTables.min.js")"></script>
+	<script type="text/javascript" src="@Url.Content("~/Content/js/dataTablesExtras/FixedHeader.min.js")"></script>
+	<script type="text/javascript" src="@Url.Content("~/Content/js/dyn-modal.js")"></script>
+	<script type="text/javascript" src="@Url.Content("~/Content/js/dataTablesExtras/locomotion-tables.js")"></script>
+
+	<script type="text/javascript" src="@Url.Content("~/Content/js/highcharts.js")"></script>
+	<script type="text/javascript" src="@Url.Content("~/Content/js/modules/data.js")"></script>
+	<script type="text/javascript" src="@Url.Content("~/Content/js/modules/exporting.js")"></script>
+
+	@RenderSection("Styles", false)
+
+	@RenderSection("Scripts", false)
+</head>
+<body>
+	<div id="header">
+	<div id="header-top" class="navbar navbar-static-top">
+		<div id="header-interior-top" class="navbar-inner navtop">
+			<div class="container">
+				<a href="/"><div class="nav logoimage"></div></a>
+				@RenderSection("NextToLogo", false)
+				@if(Request.IsAuthenticated)
+				{
+					<div class="nav pull-right">
+						<p class="nav navbar-text" style="color: black;">
+							Hi, @Html.Action("Name", "Account") 							
+						</p>
+						
+						<a href="@Url.Action("Logout", "Account")" type="button" class="btn">
+							Log out
+						</a>
+					</div>
+				}
+			</div>
+		</div>
+	</div>
+	<div id="header-bottom" class="navbar navbar-static-top">
+		<div id="header-interior" class="navbar-inner">
+			<div class="container">
+				@if(Request.IsAuthenticated)
+				{
+					<ul class="nav">
+						<li class="
+					@Html.Raw(ViewContext.Controller is LocomotionWebApp.Controllers.HomeController
+						? "active" : "")
+					"><a href="@Url.Action("Index", "Home")">Home</a></li>
+
+						<li class="
+					@Html.Raw(ViewContext.Controller is LocomotionWebApp.Controllers.NetworkController
+						? "active" : "")
+					"><a href="@Url.Action("Index", "Network")">Network</a></li>
+						<li class="
+					@Html.Raw(ViewContext.Controller is LocomotionWebApp.Controllers.HelpController
+						? "active" : "")
+					"><a href="@Url.Action("Index", "Help")">Help</a></li>
+					</ul>
+				}
+				@RenderSection("Header", false)
+			</div>
+		</div>
+	</div>
+	</div>
+
+	@RenderBody()
+
+	<!-- Programmatic modal HTML. -->
+	<div id="jsModal" class="modal hide fade" tabindex="-1" role="dialog"
+			aria-labelledby="myModalLabel" aria-hidden="true">
+		<form id="jsModalForm" enctype="multipart/form-data" method="post" style="margin: 0px;">
+			<div class="modal-header">
+				<button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
+				<h3 id="jsModalLabel">Modal</h3>
+			</div>
+			<div class="modal-body">
+				Modal text
+			</div>
+			<div class="modal-footer">
+				<button class="btn btn-primary" data-dismiss="modal" aria-hidden="true">Close</button>
+			</div>
+		</form>
+	</div>
+</body>
+</html>

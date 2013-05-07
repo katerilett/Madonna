@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<network>
+	<nodes>
+		<node>
+			<id>LAX</id>
+			<name>Los Angeles</name>
+			<inCapacity>2000</inCapacity>
+			<outCapacity>2000</outCapacity>
+			<latitude>34.05</latitude>
+			<longitude>-118.25</longitude>
+			<stochasticType>0</stochasticType> <!-- 0 if non-stochastic, 1 if 5% uniform, 2 if 5% uniform -->
+		</node>
+		<node>
+			<id>DEN</id>
+			<name>Denver</name>
+			<inCapacity>2000</inCapacity>
+			<outCapacity>2000</outCapacity>
+			<latitude>39.739167</latitude>
+			<longitude>-104.984722</longitude>
+			<stochasticType>0</stochasticType> <!-- 0 if non-stochastic, 1 if 5% uniform, 2 if 5% uniform -->
+		</node>
+		<node>
+			<id>PHX</id>
+			<name>Phoenix</name>
+			<inCapacity>2000</inCapacity>
+			<outCapacity>2000</outCapacity>
+			<latitude>33.45</latitude>
+			<longitude>-112.066667</longitude>
+			<stochasticType>0</stochasticType> <!-- 0 if non-stochastic, 1 if 5% uniform, 2 if 5% uniform -->
+		</node>
+	</nodes>
+	<links>
+		<link>
+			<to>LAX</to>
+			<from>DEN</from>
+			<distance>1174</distance>
+			<capacityMean>15</capacityMean>
+		</link>
+		<link>
+			<to>DEN</to>
+			<from>LAX</from>
+			<distance>1174</distance>
+			<capacityMean>15</capacityMean>
+		</link>
+		<link>
+			<to>LAX</to>
+			<from>PHX</from>
+			<distance>398</distance>
+			<capacityMean>15</capacityMean>
+		</link>
+		<link>
+			<to>PHX</to>
+			<from>LAX</from>
+			<distance>398</distance>
+			<capacityMean>15</capacityMean>
+		</link>
+	</links>
+</network>
